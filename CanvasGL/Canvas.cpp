@@ -1,3 +1,57 @@
+void Canvas::startWindow()
+{
+    //Step 1: Registering the Window Class
+    window_class.cbSize = sizeof(WNDCLASSEX);
+    window_class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    window_class.lpfnWndProc = windowProcess;
+    window_class.cbClsExtra = 0;
+    window_class.cbWndExtra = 0;
+    window_class.hInstance = GetModuleHandle(nullptr);
+    window_class.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+    window_class.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    window_class.lpszMenuName = NULL;
+    window_class.lpszClassName = "CanvasGL";
+    window_class.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+
+    RegisterClassEx(&window_class);
+
+    DWORD dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
+	DWORD dwStyle = WS_CAPTION | WS_SYSMENU | WS_VISIBLE | WS_THICKFRAME;
+
+    window_handle = CreateWindowEx(dwExStyle,"CanvasGL","UTN FRSF - Canvas",dwStyle,0,0, this->width, this->height,NULL, NULL, GetModuleHandle(nullptr), NULL);
+
+
+	pfd = {sizeof(PIXELFORMATDESCRIPTOR),1,PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA,32,  0, 0, 0, 0, 0, 0,0,0,0,0, 0, 0, 0,24,8,0,PFD_MAIN_PLANE,0,0, 0, 0};
+
+	device_context = GetDC(window_handle);
+}
+
+LRESULT CALLBACK Canvas::windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch(msg)
+    {
+        case WM_CLOSE:
+            DestroyWindow(window_handle);
+        break;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+        break;
+        default:
+            return DefWindowProc(window_handle, msg, wParam, lParam);
+    }
+    return 0;
+}
+
+void Canvas::setContext()
+{
+	pixel_format_number = ChoosePixelFormat(device_context,&pfd);
+	SetPixelFormat(device_context,pixel_format_number,&pfd);
+    opengl_context = wglCreateContext(device_context);
+    wglMakeCurrent(device_context,opengl_context);
+}
+
+
 int Canvas::loop(double time)
 {
     return 0;
@@ -5,53 +59,39 @@ int Canvas::loop(double time)
 
 DWORD WINAPI background_render(LPVOID canvas)
 {
-    
+    ((Canvas*)canvas)->setContext();
+    DWORD response;
     //Aca tengo que empezar el cronometro
+    glViewport(0,0,((Canvas*)canvas)->width,((Canvas*)canvas)->height);
+    glClearColor(1,0,0,1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    SwapBuffers(((Canvas*)canvas)->device_context);    
     auto start = std::chrono::high_resolution_clock::now();
-    ((Canvas*)canvas)->render();
     while(1)
     {
         //Aca tengo que tomar el tiempo y ejecutar el loop, según el tiempo que haya pasado
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        ((Canvas*)canvas)->render();
+        double time = elapsed.count();
+        if (!((Canvas*)canvas)->loop(time)) break;
+        start = finish;
+        SwapBuffers(((Canvas*)canvas)->device_context);
+        glClear(GL_COLOR_BUFFER_BIT);
     };
-    DWORD response;
     return response;
 }
 
 ///////////////////////////////
 /*INICIALIZADOR | CONSTRUCTOR*/
-int Canvas::start(int width, int height, int pixel_x_size, int pixel_y_size)
+int Canvas::start(int width, int height)
 {
 
     this->width = width;
     this->height = height;
-    this->pixel_x_size = pixel_x_size;
-    this->pixel_y_size = pixel_y_size;
 
-    WNDCLASS wc;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc.hInstance = GetModuleHandle(nullptr);
-    wc.lpfnWndProc = olc_WindowEvent;
-    wc.cbClsExtra = 0;
-    wc.cbWndExtra = 0;
-    wc.lpszMenuName = nullptr;
-    wc.hbrBackground = nullptr;
-    wc.lpszClassName = "OLC_PIXEL_GAME_ENGINE";
+    this->startWindow();
 
-    RegisterClass(&wc);
-
-    // Define window furniture
-    DWORD dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
-    DWORD dwStyle = WS_CAPTION | WS_SYSMENU | WS_VISIBLE | WS_THICKFRAME;
-
-    // Keep client size as requested
-    AdjustWindowRectEx(&rWndRect, dwStyle, FALSE, dwExStyle);    
-
-    olc_hWnd = CreateWindowEx(dwExStyle, "OLC_PIXEL_GAME_ENGINE", L"", dwStyle,nCosmeticOffset, nCosmeticOffset, width, height, NULL, NULL, GetModuleHandle(nullptr), this);
+    ShowWindow(this->window_handle,1);
 
     LPVOID variable;
     DWORD thread_id;
@@ -63,96 +103,35 @@ int Canvas::start(int width, int height, int pixel_x_size, int pixel_y_size)
         0,
         &thread_id
     );
+
+    while(GetMessage(&Msg, NULL, 0, 0) > 0)
+    {
+        TranslateMessage(&Msg);
+        DispatchMessage(&Msg);
+    }
     
     WaitForSingleObject(second_process, INFINITE);
 
     return 0;
 }
 
-///////////////////
-/*MANEJO DE COLOR*/
-void Canvas::findColor(int hex, int color[2], HANDLE output_handler)
-{
-    CONSOLE_SCREEN_BUFFER_INFOEX info;
-    info.cbSize = sizeof(info);
-    GetConsoleScreenBufferInfoEx(output_handler, &info);
-    int diferences[16];
-    for (int color_index = 0; color_index < 16; color_index++)
-    {
-        int color_table[3];
-        color_table[0] = GetRValue(info.ColorTable[color_index]);
-        color_table[1] = GetGValue(info.ColorTable[color_index]);
-        color_table[2] = GetBValue(info.ColorTable[color_index]);
-        diferences[color_index] = abs(color_table[0] - ((hex/256)/256)%256) + abs(color_table[1] - (hex/256)%256) + abs(color_table[2] - hex%256);
-    }
-    int smallest_index = 0;
-    for (int i = 1; i < 16; i++)
-    {
-        if (diferences[i] < diferences[smallest_index]) smallest_index = i;
-    }
-    color[0] = 219;
-    color[1] = smallest_index;    
-}
-
-void Canvas::addColor(int hex)
-{
-    if (this->pallet_size == 16);
-    else
-    {
-        bool already_added = false;
-        CONSOLE_SCREEN_BUFFER_INFOEX info;
-        info.cbSize = sizeof(info);
-        int diferences[16];
-        GetConsoleScreenBufferInfoEx(this->output_handler, &info);
-        for (int color_index = 0; color_index < 16; color_index++)
-        {
-            int color_table[3];
-            color_table[0] = GetRValue(info.ColorTable[color_index]);
-            color_table[1] = GetGValue(info.ColorTable[color_index]);
-            color_table[2] = GetBValue(info.ColorTable[color_index]);
-            diferences[color_index] = abs(color_table[0] - ((hex/256)/256)%256) + abs(color_table[1] - (hex/256)%256) + abs(color_table[2] - hex%256);
-            if (diferences[color_index] == 0) already_added = 1;
-        }
-        if (already_added);
-        else
-        {  
-            info.ColorTable[pallet_size++] = hex;
-            info.dwSize.Y -= 1; //Por alguna razón, windows agranda este valor al resetearlo, por eso le resto uno antes.
-            SetConsoleScreenBufferInfoEx(this->output_handler, &info);
-        }
-    }
-}
-
 //////////
 /*DIBUJO*/
-
-void Canvas::render()
-{           
-    gl
-}
-
-void Canvas::clear()
-{
-    memset(this->buffer, 0 , sizeof(CHAR_INFO) * this->width * this->height);
-}
 
 ///////////////////////////
 /*INSTRUCCIONES DE DIBUJO*/
 
-void Canvas::drawPixel(int x, int y, int color[2])
+void Canvas::drawPixel(double x, double y, int color)
 {
-    if (x >= this->width || y >= this->height || x < 0 || y < 0);
-    else
-    {
-        this->buffer[(y * this->width) + x].Char.AsciiChar = 219;
-        this->buffer[(y * this->width) + x].Attributes = color[1];
-    }
+    glPointSize(1);
+    glBegin(GL_POINTS);
+        glColor3f(((color/16)/16)%16,(color/16)%16,color%16);        
+        glVertex2f((((x/this->width)*2)-1),(((y/this->height)*2)-1));
+    glEnd();
 }
 
 void Canvas::drawLine(double x0, double y0, double x1, double y1, int color = 0xffffff)
 {
-    int console_color[2];
-    findColor(color,console_color,this->output_handler);
     double diferencia[2] = {x1-x0,y1-y0};
     double pendiente;
     if (diferencia[0]) pendiente = diferencia[1]/diferencia[0];
@@ -163,7 +142,7 @@ void Canvas::drawLine(double x0, double y0, double x1, double y1, int color = 0x
         for (int y = min(y0,y1); y < max(y0,y1); y++)
         {
             int x = (y-ordenada)/pendiente;            
-            this->drawPixel(x,y,console_color);
+            this->drawPixel(x,y,color);
         }
     }
     else
@@ -171,64 +150,54 @@ void Canvas::drawLine(double x0, double y0, double x1, double y1, int color = 0x
         for (int x = min(x0,x1); x < max(x0,x1); x++)
         {
             int y = pendiente*x + ordenada;
-            this->drawPixel(x,y,console_color);
+            this->drawPixel(x,y,color);
         }
     }
 }
 
 void Canvas::drawLineByAngle(int x0, int y0, double angle, double length, int color = 0xffffff)
-{
-    int console_color[2];
-    angle = (angle / 180) * PI;
-    findColor(color,console_color,this->output_handler);
+{    
+    angle = (angle / 180) * PI;    
     drawLine(x0,y0,x0 + (int) (cos(angle)*length), y0 + (int) (sin(angle)*length), color);
 }
 
 void Canvas::drawCircle(double x0, double y0, double radius, int color = 0xffffff)
-{
-    int console_color[2];
-    findColor(color,console_color,this->output_handler);
+{    
     for (int x = -radius; x < radius; x++)
     {
         //Obtengo la imagen
         int y = sqrt((radius*radius) - (x*x));
 
         //Uso la imagen como y
-        this->drawPixel(x0+x,y0+y,console_color);
-        this->drawPixel(x0+x,y0-y,console_color);
+        this->drawPixel(x0+x,y0+y,color);
+        this->drawPixel(x0+x,y0-y,color);
 
         //Invierto x por y
-        this->drawPixel(x0+y,y0+x,console_color);
-        this->drawPixel(x0-y,y0+x,console_color);
+        this->drawPixel(x0+y,y0+x,color);
+        this->drawPixel(x0-y,y0+x,color);
     }
 }
 
 void Canvas::fillCircle(double x0, double y0, double radius, int color = 0xffffff)
-{
-    int console_color[2];
-    findColor(color,console_color,this->output_handler);
-    for(int y=-radius; y<=radius; y++) for(int x=-radius; x<=radius; x++) if(x*x+y*y <= radius*radius) this->drawPixel(x0+x, y0+y, console_color);
+{    
+    for(int y=-radius; y<=radius; y++) for(int x=-radius; x<=radius; x++) if(x*x+y*y <= radius*radius) this->drawPixel(x0+x, y0+y, color);
 }
 
 void Canvas::drawRect(int x, int y, int height, int width, int color = 0xffffff)
-{
-    int console_color[2];
-    findColor(color,console_color,this->output_handler);
+{        
     for (int i = x; i <= width + x; i++)
     {
-        this->drawPixel(i,y,console_color);
-        this->drawPixel(i,y+height,console_color);
+        this->drawPixel(i,y,color);
+        this->drawPixel(i,y+height,color);
     }
     for (int i = y; i <= height + y; i++)
     {
-        this->drawPixel(x,i,console_color);
-        this->drawPixel(x+width,i,console_color);
+        this->drawPixel(x,i,color);
+        this->drawPixel(x+width,i,color);
     }
 }
 
 void Canvas::fillRect(int x0, int y0, int height, int width, int color = 0xffffff)
-{
-    int console_color[2];
-    findColor(color,console_color,this->output_handler);
-    for (int x = x0; x <= width + x0; x++) for (int y = y0; y <= height + y0; y++) drawPixel(x,y,console_color);
+{    
+    for (int x = x0; x <= width + x0; x++) for (int y = y0; y <= height + y0; y++) drawPixel(x,y,color);
 }
