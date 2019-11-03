@@ -2,7 +2,6 @@
 #define PI 3.141592653
 #include <windows.h>
 #include <chrono>
-#include "tools.h"
 #include <string>
 #include <math.h>
 #include <GL/gl.h>
@@ -26,11 +25,14 @@
 /*ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
 void setContext();
 void drawCircle(double x_center, double y_center, double radius, int color);
+void drawSemiCircle(double x_center, double y_center, double radius, double from , double to, int color);
 void fillCircle(double x_center, double y_center, double radius, int color);
+void fillSemiCircle(double x0, double y0, double radius, double from, double to, int color);
 void drawLineByAngle(int x0, int y0, double angle, double length, int color);
 void drawLine(double x1, double y1, double x2, double y2, int color);
 void drawRect(double x, double y, double height, double width, int color);
 void fillRect(double x, double y, double height, double width, int color);
+void drawTriangle(double x0, double y0, double x1, double y1, double x2, double y2, int color);
 void drawPixel(double x, double y, int color);
 void clear();
 void addColor(int hex);
@@ -231,6 +233,46 @@ void drawCircle(double x0, double y0, double radius, int color = 0xffffff)
 	glEnd();
 }
 
+void drawSemiCircle(double x0, double y0, double radius, double from, double to, int color = 0xffffff)
+{
+	const float DEG2RAD = 3.14159/180;
+	float red = (((color/256)/256)%256)/255.0;
+	float green = ((color/256)%256)/255.0;
+	float blue = (color%256)/255.0;
+	glColor3f(red,green,blue);
+	glBegin(GL_LINE_STRIP);
+	int i_add = 1;
+	if (from >= to) i_add = -1; 
+	for (int i=from; i != to; i += i_add)
+	{
+		float degInRad = i*DEG2RAD;
+		double x = (x0+cos(degInRad)*radius);
+		double y = (y0+sin(degInRad)*radius);
+		glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+	}
+	glEnd();
+}
+
+void fillSemiCircle(double x0, double y0, double radius, double from, double to, int color = 0xffffff)
+{
+	const float DEG2RAD = 3.14159/180;
+	float red = (((color/256)/256)%256)/255.0;
+	float green = ((color/256)%256)/255.0;
+	float blue = (color%256)/255.0;
+	glColor3f(red,green,blue);
+	glBegin(GL_POLYGON);
+	int i_add = 1;
+	if (from >= to) i_add = -1; 
+	for (int i=from; i != to; i += i_add)
+	{
+		float degInRad = i*DEG2RAD;
+		double x = (x0+cos(degInRad)*radius);
+		double y = (y0+sin(degInRad)*radius);
+		glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+	}
+	glEnd();
+}
+
 void fillCircle(double x0, double y0, double radius, int color = 0xffffff)
 {    
 	const float DEG2RAD = 3.14159/180;
@@ -277,6 +319,14 @@ void fillRect(double x, double y, double width, double height, int color = 0xfff
 	glEnd();
 }
 
+void drawTriangle(double x0, double y0, double x1, double y1, double x2, double y2, int color = 0xffffff)
+{
+	drawLine(x0,y0,x1,y1,color);
+	drawLine(x1,y1,x2,y2,color);
+	drawLine(x2,y2,x0,y0,color);
+}
+
+/*ÁREA DE CODIGO : HERRAMIENTAS*/
 bool isPressed(int key)
 {
 	if (GetAsyncKeyState(key) && 0x8000) return true;
@@ -295,5 +345,276 @@ std::string intToString(int value) {
 		number += intToString(value / 10);
 		number += (char)(value % 10 + 48);
 		return number;
+	}
+}
+
+void write(std::string text, float x0, float y0, float size, int color = 0xffffff)
+{
+	for (int letter = 0; letter < text.size(); letter++)
+	{
+		switch (text[letter])
+		{
+			case 'a':
+			case 'A':
+				drawLine(x0+0*size,y0+0*size,x0+3*size,y0+9*size,color);
+				drawLine(x0+3*size,y0+9*size,x0+6*size,y0+0*size,color);
+				drawLine(x0+0.4*3*size,y0+0.4*9*size,x0+1.6*3*size,y0+0.4*9*size,color);
+				x0 += 7*size;
+				break;
+			case 'b':
+			case 'B':
+				drawSemiCircle(x0+1*size,y0+6.5*size,2.5*size,90,-45,color);
+				drawSemiCircle(x0+1*size,y0+2.7*size,2.7*size,70,-90,color);
+				drawLine(x0+0*size,y0+0*size,x0+0*size,y0+9*size,color);
+				drawLine(x0+0*size,y0+9*size,x0+1.1*size,y0+9*size,color);
+				drawLine(x0+0*size,y0+0*size,x0+1.1*size,y0+0*size,color);
+				x0 += 5*size;
+				break;
+			case 'c':
+			case 'C':
+				drawSemiCircle(x0+4.5*size,y0+4.5*size,4.5*size,85,280,color);
+				x0 += 7*size;
+				break;
+			case 'd':
+			case 'D':
+				drawSemiCircle(x0+0*size,y0+4.5*size,4.5*size,85,-85,color);
+				drawLine(x0,y0,x0,y0+9*size,color);
+				x0 += 6*size;
+				break;
+			case 'e':
+			case 'E':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+4*size,y0+9*size,color);
+				drawLine(x0,y0+4.5*size,x0+4*size,y0+4.5*size,color);
+				drawLine(x0,y0,x0+4*size,y0,color);
+				x0 += 5.3*size;
+				break;
+			case 'f':
+			case 'F':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+4*size,y0+9*size,color);
+				drawLine(x0,y0+4.5*size,x0+4*size,y0+4.5*size,color);
+				x0 += 5.3*size;
+				break;
+			case 'g':
+			case 'G':
+				drawSemiCircle(x0+4.5*size,y0+4.5*size,4.5*size,90,290,color);
+				drawLine(x0+6*size,y0,x0+6*size,y0+4.5*size,color);
+				drawLine(x0+6*size,y0+4.5*size,x0+4*size,y0+4.5*size,color);
+				x0 += 8*size;
+				break;
+			case 'h':
+			case 'H':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0+4*size,y0,x0+4*size,y0+9*size,color);
+				drawLine(x0,y0+4.5*size,x0+4*size,y0+4.5*size,color);
+				x0 += 6*size;
+				break;
+			case 'i':
+			case 'I':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				x0 += 2*size;
+				break;
+			case 'j':
+			case 'J':
+				drawLine(x0+3*size,y0+3*size,x0+3*size,y0+9*size,color);
+				drawSemiCircle(x0,y0+3*size,3*size,0,-90,color);
+				x0 += 5*size;
+				break;
+			case 'k':
+			case 'K':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0,y0+4.5*size,x0+4*size,y0+9*size,color);
+				drawLine(x0,y0+4.5*size,x0+4*size,y0,color);
+				x0 += 5*size;
+				break;
+			case 'l':
+			case 'L':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0,y0,x0+3*size,y0,color);
+				x0 += 4*size;
+				break;
+			case 'm':
+			case 'M':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0+6*size,y0,x0+6*size,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+3*size,y0+5*size,color);
+				drawLine(x0+6*size,y0+9*size,x0+3*size,y0+5*size,color);
+				x0 += 7.5*size;
+				break;
+			case 'n':
+			case 'N':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0+4.5*size,y0,x0+4.5*size,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+4.5*size,y0,color);
+				x0 += 5.5*size;
+				break;
+			case 'o':
+			case 'O':
+				drawSemiCircle(x0+3*size,y0+6*size,3*size,0,180,color);
+				drawSemiCircle(x0+3*size,y0+3*size,3*size,180,360,color);
+				drawLine(x0,y0+3*size,x0,y0+6*size,color);
+				drawLine(x0+6*size,y0+3*size,x0+6*size,y0+6*size,color);
+				x0 += 7*size;
+				break;
+			case 'p':
+			case 'P':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+1*size,y0+9*size,color);
+				drawLine(x0,y0+4*size,x0+1*size,y0+4*size,color);
+				drawSemiCircle(x0+1*size,y0+6.5*size,2.5*size,90,-90,color);
+				x0 += 4.5*size;
+				break;
+			case 'q':
+			case 'Q':
+				drawSemiCircle(x0+3*size,y0+6*size,3*size,0,180,color);
+				drawSemiCircle(x0+3*size,y0+3*size,3*size,180,360,color);
+				drawLine(x0,y0+3*size,x0,y0+6*size,color);
+				drawLine(x0+6*size,y0+3*size,x0+6*size,y0+6*size,color);
+				drawLine(x0+3*size,y0+4.5*size,x0+6*size,y0,color);
+				x0 += 7*size;
+				break;
+			case 'r':
+			case 'R':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+1*size,y0+9*size,color);
+				drawLine(x0,y0+4*size,x0+1*size,y0+4*size,color);
+				drawSemiCircle(x0+1*size,y0+6.5*size,2.5*size,90,-90,color);
+				drawLine(x0+2.5*size,y0+4.5*size,x0+3.5*size,y0,color);
+				x0 += 4.5*size;
+				break;
+			case 's':
+			case 'S':
+				drawSemiCircle(x0+3*size,y0+6.75*size,2.25*size,55,260,color);
+				drawSemiCircle(x0+2.25*size,y0+2.25*size,2.25*size,80,-140,color);
+				x0 += 5.5*size;
+				break;
+			case 't':
+			case 'T':
+				drawLine(x0+3*size,y0,x0+3*size,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0+6*size,y0+9*size,color);
+				x0 += 7*size;
+				break;
+			case 'u':
+			case 'U':
+				drawSemiCircle(x0+2.5*size,y0+2.5*size,2.5*size,180,360,color);
+				drawLine(x0,y0+2.5*size,x0,y0+9*size,color);
+				drawLine(x0+5*size,y0+2.5*size,x0+5*size,y0+9*size,color);
+				x0 += 6*size;
+				break;
+			case 'v':
+			case 'V':
+				drawLine(x0+2*size,y0,x0,y0+9*size,color);
+				drawLine(x0+2*size,y0,x0+4*size,y0+9*size,color);
+				x0 += 5*size;
+				break;
+			case 'w':
+			case 'W':
+				drawLine(x0,y0,x0,y0+9*size,color);
+				drawLine(x0+6*size,y0,x0+6*size,y0+9*size,color);
+				drawLine(x0,y0,x0+3*size,y0+5*size,color);
+				drawLine(x0+6*size,y0,x0+3*size,y0+5*size,color);
+				x0 += 7.5*size;
+				break;
+			case 'x':
+			case 'X':
+				drawLine(x0,y0+9*size,x0+4*size,y0,color);
+				drawLine(x0,y0,x0+4*size,y0+9*size,color);
+				x0 += 5*size;
+				break;
+			case 'y':
+			case 'Y':
+				drawLine(x0+2*size,y0,x0+2*size,y0+4.5*size,color);
+				drawLine(x0,y0+9*size,x0+2*size,y0+4.5*size,color);
+				drawLine(x0+4*size,y0+9*size,x0+2*size,y0+4.5*size,color);
+				x0 += 5*size;
+				break;
+			case 'z':
+			case 'Z':
+				drawLine(x0,y0,x0+5*size,y0,color);
+				drawLine(x0,y0+9*size,x0+5*size,y0+9*size,color);
+				drawLine(x0,y0,x0+5*size,y0+9*size,color);
+				x0 += 6*size;
+				break;
+			case ' ':
+				x0 += 5*size;
+				break;
+			case '.':
+				fillCircle(x0+0.7*size,y0+0.7*size,0.7*size,color);
+				x0 += 1*size;
+				break;
+			case ',':
+				drawLine(x0+0.7*size,y0+0.7*size,x0+0.4*size,y0-1.3*size,color);
+				x0 += 1*size;
+				break;
+			case '!':
+				fillCircle(x0+1*size,y0+1*size,0.3*size,color);
+				drawLine(x0+1*size,y0+2*size,x0+1*size,y0+9*size,color);
+				x0 += 2*size;
+				break;
+			case '?':
+				fillCircle(x0+1*size,y0+1*size,0.3*size,color);
+				drawSemiCircle(x0+1*size,y0+7*size,2*size,90,-90,color);
+				drawLine(x0+1*size,y0+5*size,x0+1*size,y0+2*size,color);
+				break;
+			case '0':
+				drawSemiCircle(x0+3*size,y0+6*size,3*size,0,180,color);
+				drawSemiCircle(x0+3*size,y0+3*size,3*size,180,360,color);
+				drawLine(x0,y0+3*size,x0,y0+6*size,color);
+				drawLine(x0+6*size,y0+3*size,x0+6*size,y0+6*size,color);
+				drawLine(x0,y0+6*size,x0+6*size,y0+3*size,color);
+				x0 += 7*size;
+				break;
+			case '1':
+				drawLine(x0+3*size,y0,x0+3*size,y0+9*size,color);
+				drawLine(x0,y0+5*size,x0+3*size,y0+9*size,color);
+				x0 += 5*size;
+				break;
+			case '2':
+				drawSemiCircle(x0+3*size,y0+6*size,3*size,160,0,color);
+				drawLine(x0+6*size,y0+6*size,x0,y0,color);
+				drawLine(x0,y0,x0+6*size,y0,color);
+				x0 += 7*size;
+				break;
+			case '3':
+				drawSemiCircle(x0+2.25*size,y0+6.75*size,2.25*size,120,-90,color);
+				drawSemiCircle(x0+2.25*size,y0+2.25*size,2.25*size,90,-140,color);
+				x0 += 7*size;
+				break;
+			case '4':
+				drawLine(x0+4*size,y0,x0+4*size,y0+9*size,color);
+				drawLine(x0,y0+3.5*size,x0+4*size,y0+9*size,color);
+				drawLine(x0,y0+3.5*size,x0+6*size,y0+3.5*size,color);
+				x0 += 7*size;
+				break;
+			case '5':
+				drawLine(x0,y0+9*size,x0+5*size,y0+9*size,color);
+				drawLine(x0,y0+9*size,x0,y0+5*size,color);
+				drawSemiCircle(x0+2.5*size,y0+2.5*size,2.5*size,90,-90,color);
+				drawLine(x0,y0+5*size,x0+2.5*size,y0+5*size,color);
+				drawLine(x0,y0,x0+2.5*size,y0,color);
+				x0 += 6*size;
+				break;
+			case '6':
+				drawCircle(x0+2.5*size,y0+2.5*size,2.5*size,color);
+				drawSemiCircle(x0+6*size,y0+2.5*size,6*size,180,100,color);
+				x0 += 7*size;
+				break;
+			case '7':
+				drawLine(x0,y0+9*size,x0+5*size,y0+9*size,color);
+				drawLine(x0+5*size,y0+9*size,x0,y0,color);
+				x0 += 6*size;
+				break;
+			case '8':
+				drawCircle(x0+2.5*size,y0+7*size,2*size,color);
+				drawCircle(x0+2.5*size,y0+2.5*size,2.5*size,color);
+				x0 += 6*size;
+				break;
+			case '9':
+				drawLine(x0+4*size,y0,x0+4*size,y0+7*size,color);
+				drawCircle(x0+2*size,y0+7*size,2*size,color);
+				x0 += 6*size;
+				break;
+		}
 	}
 }
