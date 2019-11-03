@@ -1,6 +1,6 @@
 #include "../Canvas.h"
-#define HEIGHT 400
-#define WIDTH 800
+#define HEIGHT 1080
+#define WIDTH 1920
 
 int maximo(int a, int b)
 {
@@ -32,9 +32,9 @@ struct Player
 
 struct Ball
 {
-    int MAXYSPEED = 250;
-    int MINXSPEED = 200;
-    int MAXXSPEED = 300;
+    int MAXYSPEED = 350;
+    int MINXSPEED = 300;
+    int MAXXSPEED = 400;
     float y = 40 ;
     float x = WIDTH/2;
     float vx = MAXXSPEED/2;
@@ -87,11 +87,24 @@ struct Ball
 
 }ball;
 
+struct Marcador
+{
+    int p1 = 0;
+    int p2 = 0;
+
+    void show()
+    {
+        write(intToString(this->p1),(0.33)*WIDTH,(0.8)*HEIGHT,7);
+        write(intToString(this->p2),(0.66)*WIDTH,(0.8)*HEIGHT,7);
+    }
+}marcador;
+
 int setUp(int &width, int &height)
 {
     width = WIDTH;
     height = HEIGHT;
     second_player.x = WIDTH - second_player.x - second_player.width;
+    second_player.color = 0xf200ff;
     return 1;
 }
 
@@ -100,6 +113,7 @@ int loop(double time)
     first_player.draw();
     second_player.draw();
     ball.draw();
+    marcador.show();
     if (isPressed(VK_UP)) second_player.moveY(1,time);
     if (isPressed(VK_DOWN)) second_player.moveY(-1,time);
     if (isPressed(0x57)) first_player.moveY(1,time);
@@ -108,12 +122,20 @@ int loop(double time)
     switch (movement)
     {
         case 1:
-            std::cout << "PLAYER 1 WINS!";
-            return 0;
+            marcador.p1++;
+            ball.MAXYSPEED = 350;
+            ball.MINXSPEED = 300;
+            ball.MAXXSPEED = 400;
+            ball.x = WIDTH/2;
+            ball.y = HEIGHT/2;
             break;
         case 2:
-            std::cout << "PLAYER 2 WINS!";
-            return 0;
+            marcador.p2++;
+            ball.MAXYSPEED = 350;
+            ball.MINXSPEED = 300;
+            ball.MAXXSPEED = 400;
+            ball.x = WIDTH/2;
+            ball.y = HEIGHT/2;
             break;
     }
     return 1;
