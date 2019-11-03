@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <chrono>
 #include "tools.h"
+#include <string>
 #include <math.h>
 #include <GL/gl.h>
 #include <iostream>
@@ -33,6 +34,7 @@ void fillRect(double x, double y, double height, double width, int color);
 void drawPixel(double x, double y, int color);
 void clear();
 void addColor(int hex);
+std::string intToString(int value);
 void startWindow();
 DWORD WINAPI background_render(LPVOID null);
 static LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -134,6 +136,7 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 	}
 	return 0;
 }
+
 /*FÍN ÁREA: CONFIGURACIÓN DE VENTANA Y SU CONTEXTO*/
 
 /*		Esta función se ejecuta en un hilo asincrónico.
@@ -142,7 +145,9 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 DWORD WINAPI background_render(LPVOID null)
 {
 	setContext();
-	glViewport(0,0,canvas.width,canvas.height);
+	RECT client_screen;
+	GetClientRect(canvas.window_handle,&client_screen);
+	glViewport(0,0,client_screen.right,client_screen.bottom);
 	glClearColor(0,0,0,1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
 	auto start = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de inicio de dibujado
@@ -151,8 +156,10 @@ DWORD WINAPI background_render(LPVOID null)
 	{
 		auto finish = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de finalización de dibujado
 		std::chrono::duration<double> elapsed = finish - start;
-		double time = elapsed.count();
 		start = finish; //Vuelvo a tomar el tiempo de inicio
+		double time = elapsed.count();
+		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/time)) ).c_str()));
+		else break;
 		if (!loop(time)) break; //Ejecuto el programa
 		SwapBuffers(canvas.device_context); //Imprimo lo ejecutado en el programa
 		glClear(GL_COLOR_BUFFER_BIT); //Limpio la pantalla
@@ -242,7 +249,7 @@ void fillCircle(double x0, double y0, double radius, int color = 0xffffff)
 	glEnd();
 }
 
-void drawRect(double x, double y, double height, double width, int color = 0xffffff)
+void drawRect(double x, double y, double width, double height, int color = 0xffffff)
 {   
 	glBegin(GL_LINE_LOOP);
 	float red = (((color/256)/256)%256)/255.0;
@@ -256,7 +263,7 @@ void drawRect(double x, double y, double height, double width, int color = 0xfff
 	glEnd();
 }
 
-void fillRect(double x, double y, double height, double width, int color = 0xffffff)
+void fillRect(double x, double y, double width, double height, int color = 0xffffff)
 {    
 	glBegin(GL_POLYGON);
 	float red = (((color/256)/256)%256)/255.0;
@@ -268,4 +275,25 @@ void fillRect(double x, double y, double height, double width, int color = 0xfff
 	glVertex2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
 	glVertex2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
 	glEnd();
+}
+
+bool isPressed(int key)
+{
+	if (GetAsyncKeyState(key) && 0x8000) return true;
+	return false;
+}
+
+std::string intToString(int value) {
+	std::string number = "";
+	if (value < 10)
+	{
+		number += (char)(value + 48);
+		return number;
+	}
+	else
+	{
+		number += intToString(value / 10);
+		number += (char)(value % 10 + 48);
+		return number;
+	}
 }
