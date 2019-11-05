@@ -1,6 +1,6 @@
 #include "../Canvas.h"
-#define HEIGHT 1080
-#define WIDTH 1920
+#define HEIGHT 500
+#define WIDTH 700
 
 int maximo(int a, int b)
 {
@@ -12,7 +12,7 @@ struct Player
 {
     float x = 10;
     float y = 10;
-    float vy = 250;
+    float vy = 0;
     int width = 10;
     int height = 50;
     int color = 0xffffff;
@@ -44,7 +44,7 @@ struct Ball
 
     void draw()
     {
-        fillCircle(x,y,radius,color);
+        fillCircle(x,y,radius,0,color);
     }
 
     int move(float time)
@@ -94,30 +94,56 @@ struct Marcador
 
     void show()
     {
-        write(intToString(this->p1),(0.33)*WIDTH,(0.8)*HEIGHT,7);
-        write(intToString(this->p2),(0.66)*WIDTH,(0.8)*HEIGHT,7);
+        write(intToString(this->p1),(0.33)*WIDTH,(0.8)*HEIGHT,20);
+        write(intToString(this->p2),(0.66)*WIDTH,(0.8)*HEIGHT,20);
     }
 }marcador;
 
-int setUp(int &width, int &height)
+void onKeyDown(int vk)
 {
-    width = WIDTH;
-    height = HEIGHT;
+    if (vk == VK_UP) second_player.vy = 250;
+    if (vk == VK_DOWN) second_player.vy = -250;
+    if (vk == 0x57) first_player.vy = 250;
+    if (vk == 0x53) first_player.vy = -250;
+}
+
+void onKeyUp(int vk)
+{
+    if (vk == VK_UP) second_player.vy = 0;
+    if (vk == VK_DOWN) second_player.vy = 0;
+    if (vk == 0x57) first_player.vy = 0;
+    if (vk == 0x53) first_player.vy = 0;
+}
+
+void click(int x, int y)
+{
+    ball.x = x;
+    ball.y = canvas.height - y;
+}
+
+int setUp(Canvas &canvas)
+{
+    canvas.width = WIDTH;
+    canvas.height = HEIGHT;
     second_player.x = WIDTH - second_player.x - second_player.width;
     second_player.color = 0xf200ff;
+    canvas.onKeyDown = onKeyDown;
+    canvas.onKeyUp = onKeyUp;
+    canvas.onLeftClickDown = click;
+    canvas.onRightClickDown = click;
+    canvas.onLeftClickUp = click;
+    canvas.onRightClickUp = click;
     return 1;
 }
 
 int loop(double time)
 {
+    first_player.moveY(1,time);
     first_player.draw();
+    second_player.moveY(1,time);
     second_player.draw();
     ball.draw();
     marcador.show();
-    if (isPressed(VK_UP)) second_player.moveY(1,time);
-    if (isPressed(VK_DOWN)) second_player.moveY(-1,time);
-    if (isPressed(0x57)) first_player.moveY(1,time);
-    if (isPressed(0x53)) first_player.moveY(-1,time);
     int movement = ball.move(time);
     switch (movement)
     {
