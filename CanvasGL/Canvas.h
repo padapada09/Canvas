@@ -1,4 +1,4 @@
-#define _WIN32_WINNT 0x0601
+//#define _WIN32_WINNT 0x0601
 #define PI 3.141592653
 #include <windows.h>
 #include <chrono>
@@ -22,45 +22,23 @@
 *///	->Run->Configure->Extra arguments for compiler => En el textbox agrega: "-l gdi32 -l opengl32"
 /*FÍN ÁREA: ACLARACIONES*/
 
+void emptyFunction(int){} //Funciones vacias en caso de que el usuario no quiera especificar un handler
+void emptyFunction2(int,int){}
+
 /*ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
-void setContext();
-void drawCircle(double x_center, double y_center, double radius, int color);
-void drawSemiCircle(double x_center, double y_center, double radius, double from , double to, int color);
-void fillCircle(double x_center, double y_center, double radius, int color);
-void fillSemiCircle(double x0, double y0, double radius, double from, double to, int color);
-void drawLineByAngle(int x0, int y0, double angle, double length, int color);
-void drawLine(double x1, double y1, double x2, double y2, int color);
-void drawRect(double x, double y, double height, double width, int color);
-void fillRect(double x, double y, double height, double width, int color);
-void drawTriangle(double x0, double y0, double x1, double y1, double x2, double y2, int color);
-void drawPixel(double x, double y, int color);
-void clear();
-void addColor(int hex);
-std::string intToString(int value);
-void startWindow();
-DWORD WINAPI background_render(LPVOID null);
-static LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam);
-void findColor(int hex,int color[2], HANDLE hStdout);
-
-	/*SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
-	/*	Estas dos funciones no se implementan en la librería. El usuario las debe implementar.
-			
-			*/int setUp(int &width, int &height);/*
-			Llamada por el hilo asincrónico una unica vez 
-			para configurar la pantalla (y posiblemente despues la librería permita hacer
-			más configuraciones).
-
-			*/int loop(double time);/*
-			El hilo asincrónico llama a loop por cada frame que pone en la pantalla.
-			Le manda como parametro un double time, que le avisa al programa, 
-	*///	cuanto tiempo paso desde el útlimo frame mostrado al cliente.
-	/*FÍN SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
 
 /*Estructura para poder almacenar toda la información pertinente a la venta y su contexto*/
 struct Canvas
 {
 	HANDLE output_handler;
 	HANDLE input_handler;
+	bool key_pressed[256] = {0};
+	void (*onKeyDown)(int) = emptyFunction; //Punteros de funciones que el usuario puede asignar a sus propios handlers
+	void (*onKeyUp)(int) = emptyFunction;
+	void (*onLeftClickDown)(int,int) = emptyFunction2;
+	void (*onRightClickDown)(int,int) = emptyFunction2;
+	void (*onLeftClickUp)(int,int) = emptyFunction2;
+	void (*onRightClickUp)(int,int) = emptyFunction2;
 	HGLRC opengl_context;
 	MSG Msg;
 	WNDCLASSEX window_class;
@@ -72,18 +50,48 @@ struct Canvas
 	HDC device_context;
 }canvas;
 
+void setContext();
+void drawCircle(double x_center, double y_center, double radius, int color);
+void drawSemiCircle(double x_center, double y_center, double radius, double from , double to, int color);
+void fillCircle(double x_center, double y_center, double radius, int num_segments, int color);
+void fillSemiCircle(double x0, double y0, double radius, double from, double to, int color);
+void drawLineByAngle(int x0, int y0, double angle, double length, int color);
+void drawLine(double x1, double y1, double x2, double y2, int color);
+void drawRect(double x, double y, double height, double width, int color);
+void fillRect(double x, double y, double height, double width, int color);
+void drawTriangle(double x0, double y0, double x1, double y1, double x2, double y2, int color);
+std::string intToString(int value);
+void startWindow();
+DWORD WINAPI background_render(LPVOID null);
+static LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam);
+void findColor(int hex,int color[2], HANDLE hStdout);
+
+	/*SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
+	/*	Estas dos funciones no se implementan en la librería. El usuario las debe implementar.
+			
+			*/int setUp(Canvas &canvas);/*
+			Llamada por el hilo asincrónico una unica vez 
+			para configurar la pantalla (y posiblemente despues la librería permita hacer
+			más configuraciones).
+
+			*/int loop(double time);/*
+			El hilo asincrónico llama a loop por cada frame que pone en la pantalla.
+			Le manda como parametro un double time, que le avisa al programa, 
+	*///	cuanto tiempo paso desde el útlimo frame mostrado al cliente.
+	/*FÍN SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
+
 int main()
 {
 	canvas.output_handler = GetStdHandle(STD_OUTPUT_HANDLE);
 	canvas.input_handler = GetStdHandle(STD_INPUT_HANDLE);
-	setUp(canvas.width, canvas.height);
-	startWindow();
+	setUp(canvas); //Tomo las coordenadas y handlers que el usuario quiera especificar
+	startWindow(); //Seteo la ventana
 	ShowWindow(canvas.window_handle,1);
 	LPVOID variable;
 	DWORD thread_id;
-	HANDLE second_process = CreateThread(NULL,0,background_render,nullptr,0,&thread_id);
+	HANDLE second_process = CreateThread(NULL,0,background_render,nullptr,0,&thread_id); //Creo el thread encargado de ejecutar la función loop del usuario y actualizar la pantalla
 	
-	while(GetMessage(&canvas.Msg, NULL, 0, 0) > 0)
+	while(GetMessage(&canvas.Msg, NULL, 0, 0) > 0) //Bucle de mensajes de la ventana (manda a ejecutar windowProcess) 
 	{
 		TranslateMessage(&canvas.Msg);
 		DispatchMessage(&canvas.Msg);
@@ -124,6 +132,8 @@ void setContext()
 
 LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	BYTE array[256];
+	POINT point;
 	switch(msg)
 	{
 	case WM_CLOSE:
@@ -132,6 +142,38 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
+		break;
+	case WM_KEYDOWN:
+		GetKeyboardState(array);
+		for (int i = 0; i < 256; i++) if (array[i] > 127 && !canvas.key_pressed[i])
+		{
+			canvas.key_pressed[i] = 1;
+			canvas.onKeyDown(i);
+		}
+		break;
+	case WM_KEYUP:
+		GetKeyboardState(array);
+		for (int i = 0; i < 256; i++) if (array[i] < 127 && canvas.key_pressed[i])
+		{
+			canvas.key_pressed[i] = 0;
+			canvas.onKeyUp(i);
+		}
+		break;
+	case WM_LBUTTONDOWN:
+		GetCursorPos(&point);
+		canvas.onLeftClickDown(point.x,point.y);
+		break;
+	case WM_RBUTTONDOWN:
+		GetCursorPos(&point);
+		canvas.onRightClickDown(point.x,point.y);
+		break;
+	case WM_LBUTTONUP:
+		GetCursorPos(&point);
+		canvas.onLeftClickUp(point.x,point.y);
+		break;
+	case WM_RBUTTONUP:
+		GetCursorPos(&point);
+		canvas.onRightClickUp(point.x,point.y);
 		break;
 	default:
 		return DefWindowProc(window_handle, msg, wParam, lParam);
@@ -152,6 +194,8 @@ DWORD WINAPI background_render(LPVOID null)
 	glViewport(0,0,client_screen.right,client_screen.bottom);
 	glClearColor(0,0,0,1.0f);
 	glClear(GL_COLOR_BUFFER_BIT);
+	double times[1000] = {0};
+	int time_size = 0;
 	auto start = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de inicio de dibujado
 	SwapBuffers(canvas.device_context); //Esta función basicamente me imprime en pantalla lo dibujado
 	while(1)
@@ -159,10 +203,14 @@ DWORD WINAPI background_render(LPVOID null)
 		auto finish = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de finalización de dibujado
 		std::chrono::duration<double> elapsed = finish - start;
 		start = finish; //Vuelvo a tomar el tiempo de inicio
-		double time = elapsed.count();
-		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/time)) ).c_str()));
+		times[time_size++] = elapsed.count();
+		if (time_size == 1000) time_size = 0;
+		double avg_time = 0;
+		for (int i = 0; i < 1000; i++) avg_time += times[i];
+		avg_time /= 1000;
+		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/avg_time)) ).c_str()));
 		else break;
-		if (!loop(time)) break; //Ejecuto el programa
+		if (!loop(times[time_size - 1])) break; //Ejecuto el programa
 		SwapBuffers(canvas.device_context); //Imprimo lo ejecutado en el programa
 		glClear(GL_COLOR_BUFFER_BIT); //Limpio la pantalla
 	};
@@ -182,17 +230,6 @@ Tips:
 	#glPointSize te permite definir el tamaño del punto en pixeles.
 	#glLineWidth te permite definir el ancho del vector trazado en pixeles (No estoy seguro si en pixeles).
 */
-void drawPixel(double x, double y, int color)
-{
-	glPointSize(1);
-	glBegin(GL_POINTS);
-	glColor3f(((color/16)/16)%16,(color/16)%16,color%16);        
-	x = (((x/canvas.width)*2)-1);
-	y = (((y/canvas.height)*2)-1);
-	glVertex2f(x,y);
-	glEnd();
-}
-
 void drawLine(double x0, double y0, double x1, double y1, int color = 0xffffff)
 {
 	float red = (((color/256)/256)%256)/255.0;
@@ -215,21 +252,26 @@ void drawLineByAngle(int x0, int y0, double angle, double length, int color = 0x
 	drawLine(x0,y0,x0 + (int) (cos(angle)*length), y0 + (int) (sin(angle)*length), color);
 }
 
-void drawCircle(double x0, double y0, double radius, int color = 0xffffff)
-{   
-	const float DEG2RAD = 3.14159/180;
-	float red = (((color/256)/256)%256)/255.0;
-	float green = ((color/256)%256)/255.0;
-	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
-	glBegin(GL_LINE_LOOP);
-	for (int i=0; i < 360; i++)
+void drawCircle(double cx, double cy, double r, int num_segments = 0) 
+{ 
+	if (num_segments == 0) num_segments = (10.0 * sqrtf(r))/2;
+	float theta = 2 * 3.1415926 / float(num_segments); 
+	float tangetial_factor = tanf(theta);
+	float radial_factor = cosf(theta);
+	float x = r;
+	float y = 0; 
+    glColor3f(1.0,1.0,1.0);
+	glBegin(GL_LINE_LOOP); 
+	for(int ii = 0; ii < num_segments; ii++) 
 	{
-		float degInRad = i*DEG2RAD;
-		double x = (x0+cos(degInRad)*radius);
-		double y = (y0+sin(degInRad)*radius);
-		glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	}
+		glVertex2f(((((x+cx)/canvas.width)*2)-1),((((y+cy)/canvas.height)*2)-1));
+		float tx = -y; 
+		float ty = x;
+		x += tx * tangetial_factor; 
+		y += ty * tangetial_factor; 
+		x *= radial_factor; 
+		y *= radial_factor; 
+	} 
 	glEnd();
 }
 
@@ -273,20 +315,28 @@ void fillSemiCircle(double x0, double y0, double radius, double from, double to,
 	glEnd();
 }
 
-void fillCircle(double x0, double y0, double radius, int color = 0xffffff)
+void fillCircle(double x0, double y0, double radius, int num_segments = 0, int color = 0xffffff)
 {    
-	const float DEG2RAD = 3.14159/180;
+	if (num_segments == 0) num_segments = (10.0 * sqrtf(radius))/2;
+	float theta = 2 * 3.1415926 / float(num_segments);
+	float tangetial_factor = tanf(theta);
+	float radial_factor = cosf(theta);
+	float x = radius;
+	float y = 0;
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
+    glColor3f(red,green,blue);
 	glBegin(GL_POLYGON);
-	for (int i=0; i < 360; i++)
+	for(int ii = 0; ii < num_segments; ii++)
 	{
-		float degInRad = i*DEG2RAD;
-		double x = (x0+cos(degInRad)*radius);
-		double y = (y0+sin(degInRad)*radius);
-		glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+		glVertex2f(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
+		float tx = -y;
+		float ty = x;
+		x += tx * tangetial_factor;
+		y += ty * tangetial_factor;
+		x *= radial_factor;
+		y *= radial_factor;
 	}
 	glEnd();
 }
@@ -348,273 +398,438 @@ std::string intToString(int value) {
 	}
 }
 
+
 void write(std::string text, float x0, float y0, float size, int color = 0xffffff)
 {
+	double width = 3*size;
+	double height = 4*size;
+	float red = (((color/256)/256)%256)/255.0;
+	float green = ((color/256)%256)/255.0;
+	float blue = (color%256)/255.0;
+	glColor3f(red,green,blue);
+	x0 = (((x0/canvas.width)*2)-1);
+	y0 = (((y0/canvas.height)*2)-1);
+	width = (width/canvas.width);
+	height = (height/canvas.height);
 	for (int letter = 0; letter < text.size(); letter++)
 	{
+		glBegin(GL_LINE_STRIP);
 		switch (text[letter])
 		{
 			case 'a':
 			case 'A':
-				drawLine(x0+0*size,y0+0*size,x0+3*size,y0+9*size,color);
-				drawLine(x0+3*size,y0+9*size,x0+6*size,y0+0*size,color);
-				drawLine(x0+0.4*3*size,y0+0.4*9*size,x0+1.6*3*size,y0+0.4*9*size,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width,y0+height*0.6);
+				glVertex2f(x0,y0+height*0.6);
+				x0 += width+0.002*size;
 				break;
 			case 'b':
 			case 'B':
-				drawSemiCircle(x0+1*size,y0+6.5*size,2.5*size,90,-45,color);
-				drawSemiCircle(x0+1*size,y0+2.7*size,2.7*size,70,-90,color);
-				drawLine(x0+0*size,y0+0*size,x0+0*size,y0+9*size,color);
-				drawLine(x0+0*size,y0+9*size,x0+1.1*size,y0+9*size,color);
-				drawLine(x0+0*size,y0+0*size,x0+1.1*size,y0+0*size,color);
-				x0 += 5*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width*0.7,y0+height);
+				glVertex2f(x0+width*0.7,y0+height*0.6);
+				glVertex2f(x0,y0+height*0.6);
+				glVertex2f(x0+width,y0+height*0.6);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'c':
 			case 'C':
-				drawSemiCircle(x0+4.5*size,y0+4.5*size,4.5*size,85,280,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'd':
 			case 'D':
-				drawSemiCircle(x0+0*size,y0+4.5*size,4.5*size,85,-85,color);
-				drawLine(x0,y0,x0,y0+9*size,color);
-				x0 += 6*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width*0.8,y0+height);
+				glVertex2f(x0+width,y0+height*0.8);
+				glVertex2f(x0+width,y0+height*0.2);
+				glVertex2f(x0+width*0.8,y0);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'e':
 			case 'E':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+4*size,y0+9*size,color);
-				drawLine(x0,y0+4.5*size,x0+4*size,y0+4.5*size,color);
-				drawLine(x0,y0,x0+4*size,y0,color);
-				x0 += 5.3*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0+width,y0+height/2);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'f':
 			case 'F':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+4*size,y0+9*size,color);
-				drawLine(x0,y0+4.5*size,x0+4*size,y0+4.5*size,color);
-				x0 += 5.3*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0+width,y0+height/2);
+				x0 += width+0.002*size;
 				break;
 			case 'g':
 			case 'G':
-				drawSemiCircle(x0+4.5*size,y0+4.5*size,4.5*size,90,290,color);
-				drawLine(x0+6*size,y0,x0+6*size,y0+4.5*size,color);
-				drawLine(x0+6*size,y0+4.5*size,x0+4*size,y0+4.5*size,color);
-				x0 += 8*size;
+				glVertex2f(x0+width*0.6,y0+height*0.6);
+				glVertex2f(x0+width,y0+height*0.6);
+				glVertex2f(x0+width,y0+height*0.2);
+				glVertex2f(x0+width*0.8,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0+width*0.2,y0+height);
+				glVertex2f(x0+width,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'h':
 			case 'H':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0+4*size,y0,x0+4*size,y0+9*size,color);
-				drawLine(x0,y0+4.5*size,x0+4*size,y0+4.5*size,color);
-				x0 += 6*size;
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0+width,y0+height/2);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width,y0+height/2);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'i':
 			case 'I':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				x0 += 2*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width/4,y0);
+				glVertex2f(x0+width/4,y0+height);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width/2,y0+height);
+				glVertex2f(x0+width/4,y0+height);
+				glVertex2f(x0+width/4,y0);
+				glVertex2f(x0+width/2,y0);
+				x0 += width/2+0.002*size;
 				break;
 			case 'j':
 			case 'J':
-				drawLine(x0+3*size,y0+3*size,x0+3*size,y0+9*size,color);
-				drawSemiCircle(x0,y0+3*size,3*size,0,-90,color);
-				x0 += 5*size;
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width/2,y0+height);
+				glVertex2f(x0+width/2,y0+height*0.3);
+				glVertex2f(x0+width/3,y0);
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height*0.3);
+				x0 += width/2+0.002*size;
 				break;
 			case 'k':
 			case 'K':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0,y0+4.5*size,x0+4*size,y0+9*size,color);
-				drawLine(x0,y0+4.5*size,x0+4*size,y0,color);
-				x0 += 5*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0+height/2);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'l':
 			case 'L':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0,y0,x0+3*size,y0,color);
-				x0 += 4*size;
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'm':
 			case 'M':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0+6*size,y0,x0+6*size,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+3*size,y0+5*size,color);
-				drawLine(x0+6*size,y0+9*size,x0+3*size,y0+5*size,color);
-				x0 += 7.5*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width/2,y0+height*0.6);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'n':
 			case 'N':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0+4.5*size,y0,x0+4.5*size,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+4.5*size,y0,color);
-				x0 += 5.5*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'o':
 			case 'O':
-				drawSemiCircle(x0+3*size,y0+6*size,3*size,0,180,color);
-				drawSemiCircle(x0+3*size,y0+3*size,3*size,180,360,color);
-				drawLine(x0,y0+3*size,x0,y0+6*size,color);
-				drawLine(x0+6*size,y0+3*size,x0+6*size,y0+6*size,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0+width*0.2,y0+height);
+				glVertex2f(x0+width*0.8,y0+height);
+				glVertex2f(x0+width,y0+height*0.8);
+				glVertex2f(x0+width,y0+height*0.2);
+				glVertex2f(x0+width*0.8,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				x0 += width+0.002*size;
 				break;
 			case 'p':
 			case 'P':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+1*size,y0+9*size,color);
-				drawLine(x0,y0+4*size,x0+1*size,y0+4*size,color);
-				drawSemiCircle(x0+1*size,y0+6.5*size,2.5*size,90,-90,color);
-				x0 += 4.5*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width*0.9,y0+height);
+				glVertex2f(x0+width,y0+height*0.9);
+				glVertex2f(x0+width,y0+height*0.6);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0,y0+height*0.5);
+				x0 += width+0.002*size;
 				break;
 			case 'q':
 			case 'Q':
-				drawSemiCircle(x0+3*size,y0+6*size,3*size,0,180,color);
-				drawSemiCircle(x0+3*size,y0+3*size,3*size,180,360,color);
-				drawLine(x0,y0+3*size,x0,y0+6*size,color);
-				drawLine(x0+6*size,y0+3*size,x0+6*size,y0+6*size,color);
-				drawLine(x0+3*size,y0+4.5*size,x0+6*size,y0,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0+width*0.2,y0+height);
+				glVertex2f(x0+width*0.8,y0+height);
+				glVertex2f(x0+width,y0+height*0.8);
+				glVertex2f(x0+width,y0+height*0.2);
+				glVertex2f(x0+width*0.9,y0+height*0.1);
+				glVertex2f(x0+width*0.6,y0+height*0.3);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width*0.9,y0+height*0.1);
+				glVertex2f(x0+width*0.8,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				x0 += width+0.002*size;
 				break;
 			case 'r':
 			case 'R':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+1*size,y0+9*size,color);
-				drawLine(x0,y0+4*size,x0+1*size,y0+4*size,color);
-				drawSemiCircle(x0+1*size,y0+6.5*size,2.5*size,90,-90,color);
-				drawLine(x0+2.5*size,y0+4.5*size,x0+3.5*size,y0,color);
-				x0 += 4.5*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width*0.9,y0+height);
+				glVertex2f(x0+width,y0+height*0.9);
+				glVertex2f(x0+width,y0+height*0.6);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0,y0+height*0.5);
+				x0 += width+0.002*size;
 				break;
 			case 's':
 			case 'S':
-				drawSemiCircle(x0+3*size,y0+6.75*size,2.25*size,55,260,color);
-				drawSemiCircle(x0+2.25*size,y0+2.25*size,2.25*size,80,-140,color);
-				x0 += 5.5*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width*0.1,y0+height);
+				glVertex2f(x0,y0+height*0.9);
+				glVertex2f(x0,y0+height*0.55);
+				glVertex2f(x0+width*0.1,y0+height*0.50);
+				glVertex2f(x0+width*0.9,y0+height*0.50);
+				glVertex2f(x0+width,y0+height*0.45);
+				glVertex2f(x0+width,y0+height*0.1);
+				glVertex2f(x0+width*0.9,y0);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case 't':
 			case 'T':
-				drawLine(x0+3*size,y0,x0+3*size,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0+6*size,y0+9*size,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width*0.5,y0+height);
+				glVertex2f(x0+width*0.5,y0);
+				glVertex2f(x0+width*0.5,y0+height);
+				glVertex2f(x0+width,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'u':
 			case 'U':
-				drawSemiCircle(x0+2.5*size,y0+2.5*size,2.5*size,180,360,color);
-				drawLine(x0,y0+2.5*size,x0,y0+9*size,color);
-				drawLine(x0+5*size,y0+2.5*size,x0+5*size,y0+9*size,color);
-				x0 += 6*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width,y0+height*0.2);
+				glVertex2f(x0+width*0.8,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'v':
 			case 'V':
-				drawLine(x0+2*size,y0,x0,y0+9*size,color);
-				drawLine(x0+2*size,y0,x0+4*size,y0+9*size,color);
-				x0 += 5*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width/2,y0);
+				glVertex2f(x0,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'w':
 			case 'W':
-				drawLine(x0,y0,x0,y0+9*size,color);
-				drawLine(x0+6*size,y0,x0+6*size,y0+9*size,color);
-				drawLine(x0,y0,x0+3*size,y0+5*size,color);
-				drawLine(x0+6*size,y0,x0+3*size,y0+5*size,color);
-				x0 += 7.5*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width/2,y0+height*0.6);
+				glVertex2f(x0,y0);
+				glVertex2f(x0,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'x':
 			case 'X':
-				drawLine(x0,y0+9*size,x0+4*size,y0,color);
-				drawLine(x0,y0,x0+4*size,y0+9*size,color);
-				x0 += 5*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width/2,y0+height/2);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0);
+				glVertex2f(x0+width/2,y0+height/2);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case 'y':
 			case 'Y':
-				drawLine(x0+2*size,y0,x0+2*size,y0+4.5*size,color);
-				drawLine(x0,y0+9*size,x0+2*size,y0+4.5*size,color);
-				drawLine(x0+4*size,y0+9*size,x0+2*size,y0+4.5*size,color);
-				x0 += 5*size;
+				glVertex2f(x0+width/2,y0);
+				glVertex2f(x0+width/2,y0+height*0.6);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width/2,y0+height*0.6);
+				glVertex2f(x0,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case 'z':
 			case 'Z':
-				drawLine(x0,y0,x0+5*size,y0,color);
-				drawLine(x0,y0+9*size,x0+5*size,y0+9*size,color);
-				drawLine(x0,y0,x0+5*size,y0+9*size,color);
-				x0 += 6*size;
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case ' ':
-				x0 += 5*size;
+				x0 += width*0.7+0.002*size;
 				break;
 			case '.':
-				fillCircle(x0+0.7*size,y0+0.7*size,0.7*size,color);
-				x0 += 1*size;
-				break;
-			case ',':
-				drawLine(x0+0.7*size,y0+0.7*size,x0+0.4*size,y0-1.3*size,color);
-				x0 += 1*size;
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width*0.1,y0);
+				glVertex2f(x0+width*0.1,y0+height*0.1);
+				glVertex2f(x0,y0+height*0.1);
+				glVertex2f(x0,y0);
+				x0 += width*0.1+0.002*size;
 				break;
 			case '!':
-				fillCircle(x0+1*size,y0+1*size,0.3*size,color);
-				drawLine(x0+1*size,y0+2*size,x0+1*size,y0+9*size,color);
-				x0 += 2*size;
-				break;
-			case '?':
-				fillCircle(x0+1*size,y0+1*size,0.3*size,color);
-				drawSemiCircle(x0+1*size,y0+7*size,2*size,90,-90,color);
-				drawLine(x0+1*size,y0+5*size,x0+1*size,y0+2*size,color);
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width*0.1,y0);
+				glVertex2f(x0+width*0.1,y0+height*0.1);
+				glVertex2f(x0,y0+height*0.1);
+				glVertex2f(x0,y0);
+				glEnd();
+				glBegin(GL_LINE_STRIP);
+				glVertex2f(x0+width*0.05,y0+height*0.2);
+				glVertex2f(x0+width*0.05,y0+height);
+				x0 += width*0.1+0.002*size;
 				break;
 			case '0':
-				drawSemiCircle(x0+3*size,y0+6*size,3*size,0,180,color);
-				drawSemiCircle(x0+3*size,y0+3*size,3*size,180,360,color);
-				drawLine(x0,y0+3*size,x0,y0+6*size,color);
-				drawLine(x0+6*size,y0+3*size,x0+6*size,y0+6*size,color);
-				drawLine(x0,y0+6*size,x0+6*size,y0+3*size,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0+width*0.2,y0+height);
+				glVertex2f(x0+width*0.8,y0+height);
+				glVertex2f(x0+width,y0+height*0.8);
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0+width,y0+height*0.8);
+				glVertex2f(x0+width,y0+height*0.2);
+				glVertex2f(x0+width*0.8,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				x0 += width+0.002*size;
 				break;
 			case '1':
-				drawLine(x0+3*size,y0,x0+3*size,y0+9*size,color);
-				drawLine(x0,y0+5*size,x0+3*size,y0+9*size,color);
-				x0 += 5*size;
+				glVertex2f(x0,y0+height*0.6);
+				glVertex2f(x0+width*0.4,y0+height);
+				glVertex2f(x0+width*0.4,y0);
+				x0 += width*0.4+0.002*size;
 				break;
 			case '2':
-				drawSemiCircle(x0+3*size,y0+6*size,3*size,160,0,color);
-				drawLine(x0+6*size,y0+6*size,x0,y0,color);
-				drawLine(x0,y0,x0+6*size,y0,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0+width*0.2,y0+height);
+				glVertex2f(x0+width*0.8,y0+height);
+				glVertex2f(x0+width,y0+height*0.8);
+				glVertex2f(x0+width,y0+height*0.7);
+				glVertex2f(x0,y0);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 			case '3':
-				drawSemiCircle(x0+2.25*size,y0+6.75*size,2.25*size,120,-90,color);
-				drawSemiCircle(x0+2.25*size,y0+2.25*size,2.25*size,90,-140,color);
-				x0 += 7*size;
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0+width*0.1,y0+height);
+				glVertex2f(x0+width*0.9,y0+height);
+				glVertex2f(x0+width,y0+height*0.9);
+				glVertex2f(x0+width,y0+height*0.5);
+				glVertex2f(x0+width*0.5,y0+height*0.5);
+				glVertex2f(x0+width,y0+height*0.5);
+				glVertex2f(x0+width,y0+height*0.1);
+				glVertex2f(x0+width*0.9,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				x0 += width+0.002*size;
 				break;
 			case '4':
-				drawLine(x0+4*size,y0,x0+4*size,y0+9*size,color);
-				drawLine(x0,y0+3.5*size,x0+4*size,y0+9*size,color);
-				drawLine(x0,y0+3.5*size,x0+6*size,y0+3.5*size,color);
-				x0 += 7*size;
+				glVertex2f(x0+width*0.6,y0);
+				glVertex2f(x0+width*0.6,y0+height);
+				glVertex2f(x0,y0+height*0.3);
+				glVertex2f(x0+width,y0+height*0.3);
+				x0 += width+0.002*size;
 				break;
 			case '5':
-				drawLine(x0,y0+9*size,x0+5*size,y0+9*size,color);
-				drawLine(x0,y0+9*size,x0,y0+5*size,color);
-				drawSemiCircle(x0+2.5*size,y0+2.5*size,2.5*size,90,-90,color);
-				drawLine(x0,y0+5*size,x0+2.5*size,y0+5*size,color);
-				drawLine(x0,y0,x0+2.5*size,y0,color);
-				x0 += 6*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0,y0+height*0.5);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0+width,y0+height*0.4);
+				glVertex2f(x0+width,y0+height*0.1);
+				glVertex2f(x0+width*0.9,y0);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case '6':
-				drawCircle(x0+2.5*size,y0+2.5*size,2.5*size,color);
-				drawSemiCircle(x0+6*size,y0+2.5*size,6*size,180,100,color);
-				x0 += 7*size;
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0+width*0.2,y0+height);
+				glVertex2f(x0,y0+height*0.8);
+				glVertex2f(x0,y0+height*0.5);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0+width,y0+height*0.4);
+				glVertex2f(x0+width,y0+height*0.1);
+				glVertex2f(x0+width*0.9,y0);
+				glVertex2f(x0+width*0.2,y0);
+				glVertex2f(x0,y0+height*0.2);
+				glVertex2f(x0,y0+height*0.5);
+				x0 += width+0.002*size;
 				break;
 			case '7':
-				drawLine(x0,y0+9*size,x0+5*size,y0+9*size,color);
-				drawLine(x0+5*size,y0+9*size,x0,y0,color);
-				x0 += 6*size;
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width,y0+height);
+				glVertex2f(x0,y0);
+				x0 += width+0.002*size;
 				break;
 			case '8':
-				drawCircle(x0+2.5*size,y0+7*size,2*size,color);
-				drawCircle(x0+2.5*size,y0+2.5*size,2.5*size,color);
-				x0 += 6*size;
+				glVertex2f(x0+width*0.1,y0+height);
+				glVertex2f(x0+width*0.9,y0+height);
+				glVertex2f(x0+width,y0+height*0.9);
+				glVertex2f(x0+width,y0+height*0.6);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0+width,y0+height*0.4);
+				glVertex2f(x0+width,y0+height*0.1);
+				glVertex2f(x0+width*0.9,y0);
+				glVertex2f(x0+width*0.1,y0);
+				glVertex2f(x0,y0+height*0.1);
+				glVertex2f(x0,y0+height*0.4);
+				glVertex2f(x0+width*0.1,y0+height*0.5);
+				glVertex2f(x0+width*0.9,y0+height*0.5);
+				glVertex2f(x0+width*0.1,y0+height*0.5);
+				glVertex2f(x0,y0+height*0.6);
+				glVertex2f(x0,y0+height*0.9);
+				glVertex2f(x0+width*0.1,y0+height);
+				x0 += width+0.002*size;
 				break;
 			case '9':
-				drawLine(x0+4*size,y0,x0+4*size,y0+7*size,color);
-				drawCircle(x0+2*size,y0+7*size,2*size,color);
-				x0 += 6*size;
+				glVertex2f(x0+width,y0+height*0.5);
+				glVertex2f(x0+width*0.1,y0+height*0.5);
+				glVertex2f(x0,y0+height*0.6);
+				glVertex2f(x0,y0+height*0.9);
+				glVertex2f(x0+width*0.1,y0+height);
+				glVertex2f(x0+width*0.9,y0+height);
+				glVertex2f(x0+width,y0+height*0.9);
+				glVertex2f(x0+width,y0);
+				x0 += width+0.002*size;
 				break;
 		}
+		glEnd();
 	}
 }
