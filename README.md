@@ -1,25 +1,23 @@
 # Canvas
-Proyecto de estudiantes de la catedra Algoritmos y Estructura de Datos de la Universidad Tecnologica Nacional, Facultad Regional Santa Fe, para brindar un entorno grafico sencillo para el desarrollo de proyectos academicos.
+Proyecto de estudiantes de la cátedra Algoritmos y Estructura de Datos de la Universidad Tecnológica Nacional, Facultad Regional Santa Fe, para brindar un entorno gráfico sencillo para el desarrollo de proyectos académicos.
 <br>
-Basado en el funcionamiento de Processing, permite dibujar en la pantalla utilizando como motor grafico de fondo OpenGL.
+Basado en el funcionamiento de Processing, permite dibujar en la pantalla utilizando como motor gráfico de fondo OpenGL.
 <br>
-La librería no tiene dependencias fuera de OpenGL (Ya viene en los compiladores estandares).
+La librería no tiene dependencias fuera de OpenGL (Ya viene en los compiladores estándares).
 <br><br>
 ## Para empezar
-Primero que nada, tenemos que incluir la librería y definir el ancho y el alto que queremos para nuestra ventana
+Primero que nada, tenemos que incluir la librería.
 ```
-#include "../Canvas.h"
-#define WIDTH 500
-#define HEIGHT 500
+#include "Canvas.h" //Replace with yout path lo library
 ```
-Despues ya estamos en condiciones de definir las dos funciones que nos permitiran dibujar. La ejecución de estas funciones es manejada por la librería, solo debemos definirlas para indicarle a Canvas.h que queremos que hagan.
+Después ya estamos en condiciones de definir las dos funciones que nos permitirán dibujar. La ejecución de estas funciones es manejada por la librería, solo debemos definirlas para indicarle a Canvas.h qué queremos que hagan.
 <br>
-Por su parte setUp se ejcuta una unica vez al inicializar la ventana. Toma como parametro por referencia un tipo de dato abstracto llamado Canvas en donde se guardan varias de las variables que necesita la librería para trabajar. Por ahora, las variables mas importantes son width y height, en donde podemos especificar el ancho y el alto de la ventana (en pixeles).
+Por su parte setUp se ejcuta una única vez al inicializar la ventana. Toma como parametro por referencia un tipo de dato abstracto llamado Canvas en donde se guardan varias de las variables que necesita la librería para trabajar. Por ahora, las variables mas importantes son width y height, en donde podemos especificar el ancho y el alto de la ventana (en pixeles).
 ```
 int setUp(Canvas &canvas)
 {
-    canvas.width = WIDTH;
-    canvas.height = HEIGHT;
+    canvas.width = 500;
+    canvas.height = 500;
     return 1;
 }
 ```
