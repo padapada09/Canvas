@@ -36,4 +36,5 @@ Para hacerlo en Zinjai, tenes que ir a ->Run->Configure->Extra arguments for com
 <br>
 Listo :wink: ya podes compilar y ejecutar tu programa. Deberías ver algo como esto...
 <br>
+<br>
 ![Contribution guidelines for this project](GettinStarted.PNG)
