@@ -1,6 +1,7 @@
 //#define _WIN32_WINNT 0x0601
 #define PI 3.141592653
 #include <windows.h>
+#include <winuser.h>
 #include <chrono>
 #include <string>
 #include <math.h>
@@ -24,6 +25,7 @@
 
 void emptyFunction(int){} //Funciones vacias en caso de que el usuario no quiera especificar un handler
 void emptyFunction2(int,int){}
+void emptyFunction0(){}
 
 /*ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
 
@@ -35,6 +37,7 @@ struct Canvas
 	bool key_pressed[256] = {0};
 	void (*onKeyDown)(int) = emptyFunction; //Punteros de funciones que el usuario puede asignar a sus propios handlers
 	void (*onKeyUp)(int) = emptyFunction;
+	void (*onResizing)() = emptyFunction0;
 	void (*onLeftClickDown)(int,int) = emptyFunction2;
 	void (*onRightClickDown)(int,int) = emptyFunction2;
 	void (*onLeftClickUp)(int,int) = emptyFunction2;
@@ -51,6 +54,7 @@ struct Canvas
 }canvas;
 
 void setContext();
+void updateViewPort();
 void drawCircle(double x_center, double y_center, double radius, int color);
 void drawSemiCircle(double x_center, double y_center, double radius, double from , double to, int color);
 void fillCircle(double x_center, double y_center, double radius, int num_segments, int color);
@@ -69,7 +73,7 @@ void findColor(int hex,int color[2], HANDLE hStdout);
 	/*SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
 	/*	Estas dos funciones no se implementan en la librería. El usuario las debe implementar.
 			
-			*/int setUp(Canvas &canvas);/*
+			*/int setUp();/*
 			Llamada por el hilo asincrónico una unica vez 
 			para configurar la pantalla (y posiblemente despues la librería permita hacer
 			más configuraciones).
@@ -84,7 +88,7 @@ int main()
 {
 	canvas.output_handler = GetStdHandle(STD_OUTPUT_HANDLE);
 	canvas.input_handler = GetStdHandle(STD_INPUT_HANDLE);
-	setUp(canvas); //Tomo las coordenadas y handlers que el usuario quiera especificar
+	setUp(); //Tomo las coordenadas y handlers que el usuario quiera especificar
 	startWindow(); //Seteo la ventana
 	ShowWindow(canvas.window_handle,1);
 	LPVOID variable;
@@ -118,7 +122,7 @@ void startWindow()
 	DWORD dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
 	DWORD dwStyle = WS_BORDER | WS_SYSMENU | WS_SIZEBOX | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 	canvas.window_handle = CreateWindowEx(dwExStyle,"CanvasGL","UTN FRSF - Canvas",dwStyle,0,0, canvas.width, canvas.height,NULL, NULL, GetModuleHandle(nullptr), NULL);
-	canvas.pfd = {sizeof(PIXELFORMATDESCRIPTOR),1,PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA,32,  0, 0, 0, 0, 0, 0,0,0,0,0, 0, 0, 0,24,8,0,PFD_MAIN_PLANE,0,0, 0, 0};
+	canvas.pfd = {sizeof(PIXELFORMATDESCRIPTOR),1,PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA,32,  0, 0, 0, 0, 0, 0,0,0,0,0, 0, 0, 0,24,8,0,PFD_MAIN_PLANE,0,0, 0,0};
 	canvas.device_context = GetDC(canvas.window_handle);
 	canvas.pixel_format_number = ChoosePixelFormat(canvas.device_context,&canvas.pfd);
 	SetPixelFormat(canvas.device_context,canvas.pixel_format_number,&canvas.pfd);
@@ -128,6 +132,18 @@ void setContext()
 {
 	canvas.opengl_context = wglCreateContext(canvas.device_context);
 	wglMakeCurrent(canvas.device_context,canvas.opengl_context);
+}
+
+void updateViewPort()
+{
+	// std::cout << "REZISING..." << std::endl;
+	// std::cout << canvas.width << " " << canvas.height << std::endl;
+	RECT client_screen;
+	GetClientRect(canvas.window_handle,&client_screen);
+	canvas.width = client_screen.right - client_screen.left;
+	canvas.height = client_screen.bottom - client_screen.top;
+	glViewport(0,0,client_screen.right,client_screen.bottom);
+	// std::cout << canvas.width << " " << canvas.height << std::endl;
 }
 
 LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -175,6 +191,10 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 		GetCursorPos(&point);
 		canvas.onRightClickUp(point.x,point.y);
 		break;
+	case WM_EXITSIZEMOVE :
+		updateViewPort();
+		canvas.onResizing();
+		break;
 	default:
 		return DefWindowProc(window_handle, msg, wParam, lParam);
 	}
@@ -210,6 +230,7 @@ DWORD WINAPI background_render(LPVOID null)
 		avg_time /= 1000;
 		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/avg_time)) ).c_str()));
 		else break;
+		updateViewPort();
 		if (!loop(times[time_size - 1])) break; //Ejecuto el programa
 		SwapBuffers(canvas.device_context); //Imprimo lo ejecutado en el programa
 		glClear(GL_COLOR_BUFFER_BIT); //Limpio la pantalla
@@ -241,8 +262,8 @@ void drawLine(double x0, double y0, double x1, double y1, int color = 0xffffff)
 	y0 = (((y0/canvas.height)*2)-1);
 	x1 = (((x1/canvas.width)*2)-1);
 	y1 = (((y1/canvas.height)*2)-1);
-	glVertex2f(x0,y0);
-	glVertex2f(x1,y1);
+	glVertex2d(x0,y0);
+	glVertex2d(x1,y1);
 	glEnd();
 }
 
@@ -318,19 +339,20 @@ void fillSemiCircle(double x0, double y0, double radius, double from, double to,
 void fillCircle(double x0, double y0, double radius, int num_segments = 0, int color = 0xffffff)
 {    
 	if (num_segments == 0) num_segments = (10.0 * sqrtf(radius))/2;
-	float theta = 2 * 3.1415926 / float(num_segments);
-	float tangetial_factor = tanf(theta);
-	float radial_factor = cosf(theta);
-	float x = radius;
-	float y = 0;
+	double theta = 2 * 3.1415926 / double(num_segments);
+	double tangetial_factor = tanf(theta);
+	double radial_factor = cosf(theta);
+	double x = radius;
+	double y = 0;
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
     glColor3f(red,green,blue);
+	glLineWidth(1.0);
 	glBegin(GL_POLYGON);
 	for(int ii = 0; ii < num_segments; ii++)
 	{
-		glVertex2f(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
+		glVertex2d(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
 		float tx = -y;
 		float ty = x;
 		x += tx * tangetial_factor;
@@ -343,10 +365,10 @@ void fillCircle(double x0, double y0, double radius, int num_segments = 0, int c
 
 void drawRect(double x, double y, double width, double height, int color = 0xffffff)
 {   
-	glBegin(GL_LINE_LOOP);
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
+	glBegin(GL_LINE_LOOP);
 	glColor3f(red,green,blue);
 	glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
 	glVertex2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
@@ -399,7 +421,7 @@ std::string intToString(int value) {
 }
 
 
-void write(std::string text, float x0, float y0, float size, int color = 0xffffff)
+void write(std::string text, float x0, float y0, float size, bool centered = false , int color = 0xffffff)
 {
 	double width = 3*size;
 	double height = 4*size;
@@ -407,8 +429,15 @@ void write(std::string text, float x0, float y0, float size, int color = 0xfffff
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
 	glColor3f(red,green,blue);
-	x0 = (((x0/canvas.width)*2)-1);
-	y0 = (((y0/canvas.height)*2)-1);
+	if (!centered)
+	{
+		x0 = (((x0/canvas.width)*2)-1);
+		y0 = (((y0/canvas.height)*2)-1);
+	}else{
+		x0 -= (width-1*size)*text.size()/2.0;
+		x0 = (((x0/canvas.width)*2)-1);
+		y0 = (((y0/canvas.height)*2)-1);
+	}
 	width = (width/canvas.width);
 	height = (height/canvas.height);
 	for (int letter = 0; letter < text.size(); letter++)
@@ -715,6 +744,20 @@ void write(std::string text, float x0, float y0, float size, int color = 0xfffff
 				glVertex2f(x0+width*0.05,y0+height*0.2);
 				glVertex2f(x0+width*0.05,y0+height);
 				x0 += width*0.1+0.002*size;
+				break;
+			case '*':
+				glVertex2f(x0+width*0.4,y0+height*0.4);
+				glVertex2f(x0+width*0.4,y0+height);
+				glVertex2f(x0+width*0.4,y0+height*0.7);
+				glVertex2f(x0,y0+height);
+				glVertex2f(x0+width*0.8,y0+height*0.4);
+				glVertex2f(x0+width*0.4,y0+height*0.7);
+				glVertex2f(x0,y0+height*0.4);
+				glVertex2f(x0+width*0.8,y0+height);
+				glVertex2f(x0+width*0.4,y0+height*0.7);
+				glVertex2f(x0+width*0.8,y0+height*0.7);
+				glVertex2f(x0+width*0,y0+height*0.7);
+				x0 += width*0.8+0.002*size;
 				break;
 			case '0':
 				glVertex2f(x0,y0+height*0.2);
