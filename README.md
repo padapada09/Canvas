@@ -12,9 +12,9 @@ Primero que nada, tenemos que incluir la librería.
 ```
 Después ya estamos en condiciones de definir las dos funciones que nos permitirán dibujar. La ejecución de estas funciones es manejada por la librería, solo debemos definirlas para indicarle a Canvas.h qué queremos que hagan.
 <br>
-Por su parte setUp se ejcuta una única vez al inicializar la ventana. Toma como parametro por referencia un tipo de dato abstracto llamado Canvas en donde se guardan varias de las variables que necesita la librería para trabajar. Por ahora, las variables mas importantes son width y height, en donde podemos especificar el ancho y el alto de la ventana (en pixeles).
+Por su parte setUp se ejcuta una única vez al inicializar la ventana. Podiendo usar un tipo de dato abstracto llamado Canvas en donde se guardan varias de las variables que necesita la librería para trabajar. Por ahora, las variables mas importantes son width y height, en donde podemos especificar el ancho y el alto de la ventana (en pixeles).
 ```
-int setUp(Canvas &canvas)
+int setUp()
 {
     canvas.width = 500;
     canvas.height = 500;
