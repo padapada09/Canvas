@@ -119,7 +119,6 @@ int main()
 	if (!ChoosePixelF || !SetPixelF || !wglCreateC || !wglMakeC || !glViewp || !glClearC || !SwapB || !glC3f || !glB || !glE || !glV2f || !glLineW) return -1;
 	setUp(); //Tomo las coordenadas y handlers que el usuario quiera especificar
 	startWindow(); //Seteo la ventana
-	ShowWindow(canvas.window_handle,1);
 	LPVOID variable;
 	DWORD thread_id;
 	HANDLE second_process = CreateThread(NULL,0,background_render,nullptr,0,&thread_id); //Creo el thread encargado de ejecutar la función loop del usuario y actualizar la pantalla
@@ -151,6 +150,11 @@ void startWindow()
 	DWORD dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
 	DWORD dwStyle = WS_BORDER | WS_SYSMENU | WS_SIZEBOX | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 	canvas.window_handle = CreateWindowEx(dwExStyle,TEXT("CanvasGL"),TEXT("UTN FRSF - Canvas"),dwStyle,0,0, canvas.width, canvas.height,NULL, NULL, GetModuleHandle(nullptr), NULL);
+	RECT client_screen;
+	GetClientRect(canvas.window_handle,&client_screen);
+	int height = client_screen.bottom - client_screen.top;
+	int width = client_screen.right - client_screen.left;
+	SetWindowPos(canvas.window_handle,HWND_TOP,client_screen.left,client_screen.top,canvas.width + (canvas.width - width),canvas.height + (canvas.height - height),SWP_SHOWWINDOW);
 	canvas.pfd = {sizeof(PIXELFORMATDESCRIPTOR),1,PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA,32,  0, 0, 0, 0, 0, 0,0,0,0,0, 0, 0, 0,24,8,0,PFD_MAIN_PLANE,0,0, 0,0};
 	canvas.device_context = GetDC(canvas.window_handle);
 	canvas.pixel_format_number = ChoosePixelF(canvas.device_context,&canvas.pfd);
@@ -288,8 +292,10 @@ void drawLine(double x0, double y0, double x1, double y1, int color = 0xffffff)
 	glB(GL_LINES);
 	x0 = (((x0/canvas.width)*2)-1);
 	y0 = (((y0/canvas.height)*2)-1);
+	glV2f(x0,y0);
 	x1 = (((x1/canvas.width)*2)-1);
 	y1 = (((y1/canvas.height)*2)-1);(x0,y0);(x1,y1);
+	glV2f(x1,y1);
 	glE();
 }
 
@@ -378,7 +384,7 @@ void fillCircle(double x0, double y0, double radius, int num_segments = 0, int c
 	glB(GL_POLYGON);
 	for(int ii = 0; ii < num_segments; ii++)
 	{
-(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
+		glV2f(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
 		float tx = -y;
 		float ty = x;
 		x += tx * tangetial_factor;
@@ -446,7 +452,7 @@ void write(char* text, float x0, float y0, float size, bool centered = false , i
 	width = (width/canvas.width);
 	height = (height/canvas.height);
 	int letter = 0;
-	while (text[letter++] != '\0')
+	do
 	{
 		glB(GL_LINE_STRIP);
 		switch (text[letter])
@@ -900,5 +906,5 @@ void write(char* text, float x0, float y0, float size, bool centered = false , i
 				break;			
 		}
 		glE();
-	}
+	}while (text[++letter] != '\0');
 }

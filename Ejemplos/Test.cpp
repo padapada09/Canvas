@@ -1,11 +1,5 @@
 #include "../Canvas.h"
 
-int main()
-{
-	return 0;
-}
-
-
 int setUp()
 {
     canvas.width = 500;
@@ -15,6 +9,7 @@ int setUp()
 
 int loop(float time)
 {
-    fillRect(100,100,100,100);
+    drawLine(0,0,500,500);
+    drawLine(500,0,0,500);    
     return 1;
 }

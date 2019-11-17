@@ -10,10 +10,10 @@ int maximo(int a, int b)
 
 struct Field
 {
-    int x = 0.1*WIDTH;
-    int y = 0.1*HEIGHT;
-    int width = 0.8*WIDTH;
-    int height = 0.8*HEIGHT; 
+    float x = 0.1*WIDTH;
+    float y = 0.1*HEIGHT;
+    float width = 0.8*WIDTH;
+    float height = 0.8*HEIGHT; 
     int color = 0xffffff;
 
     void draw()
@@ -54,7 +54,7 @@ struct Ball
     float vx = MAXXSPEED/2;
     float vy = MAXYSPEED/2;
     int radius = 10;
-    int color = 0x6699ff;
+    int color = 0x000000;
 
     void draw()
     {
@@ -108,7 +108,7 @@ struct Marcador
     int color = 0xffffff;
     void show()
     {
-        char *player_1_points, *player_2_points;
+        char *player_1_points = new char[255], *player_2_points = new char[255];
         sprintf(player_1_points,"%d",this->p1);
         sprintf(player_2_points,"%d",this->p2);
         write(player_1_points,(0.33)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
@@ -157,7 +157,7 @@ int loop(float time)
     fillRect(0,0,WIDTH,HEIGHT,0x003399);
     field.draw();
     int lx = -65;
-    int ly = 330;
+    int ly = 290;
     fillSemiCircle(100+lx,100+ly,30,1,180,0x6699ff);
     fillSemiCircle(100+lx,100+ly,15,0,180,0x003399);
     fillSemiCircle(100+lx,160+ly,30,0,-180,0x6699ff);
