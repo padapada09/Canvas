@@ -130,7 +130,6 @@ int main()
 		DispatchMessage(&canvas.Msg);
 	}
 }
-#endif
 
 /*	ÁREA: CONFIGURACIÓN DE VENTANA Y SU CONTEXTO
 		Índice:
