@@ -3,12 +3,10 @@
 #endif
 #define PI 3.141592653
 #include <windows.h>
-#include <winuser.h>
 #include <chrono>
-#include <string>
+#include <stdio.h>
 #include <math.h>
 #include <GL/gl.h>
-#include <iostream>
 
 /*ÁREA: ACLARACIONES*/
 /*		Glosario:
@@ -62,7 +60,6 @@ void drawLine(double x1, double y1, double x2, double y2, int color);
 void drawRect(double x, double y, double height, double width, int color);
 void fillRect(double x, double y, double height, double width, int color);
 void drawTriangle(double x0, double y0, double x1, double y1, double x2, double y2, int color);
-std::string intToString(int value);
 void startWindow();
 DWORD WINAPI background_render(LPVOID null);
 static LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -82,9 +79,11 @@ void findColor(int hex,int color[2], HANDLE hStdout);
 	*///	cuanto tiempo paso desde el útlimo frame mostrado al cliente.
 	/*FÍN SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
 
-HINSTANCE gdi32Lib;
-HINSTANCE opengl32Lib;
+/*Handlers de los binarios de las librerías precompiladas que necesitamos para trabajar con openGL*/
+HINSTANCE gdi32Lib = LoadLibrary(TEXT("gdi32.dll"));
+HINSTANCE opengl32Lib = LoadLibrary(TEXT("opengl32.dll"));;
 
+/*Prototipos y punteros a las funciones de las librerías que vamos a necesitar*/
 typedef BOOL (__stdcall *SetPixelForm)(HDC,int,const PIXELFORMATDESCRIPTOR*);
 typedef BOOL (__stdcall *ChoosePixelForm)(HDC,const PIXELFORMATDESCRIPTOR*);
 typedef HGLRC (__stdcall *wglCreateCont)(HDC);
@@ -98,39 +97,23 @@ typedef void (__stdcall *glBeg)(GLenum);
 typedef void (__stdcall *glEn)(void);
 typedef void (__stdcall *glVert2f)(GLfloat,GLfloat);
 typedef void (__stdcall *glLineWid)(GLfloat);
-SetPixelForm SetPixelF;
-ChoosePixelForm ChoosePixelF;
-wglCreateCont wglCreateC;
-wglMakeCurr wglMakeC;
-glViewpor glViewp;
-glClearCol glClearC;
-glCle glC;
-SwapBuff SwapB;
-glCol3f glC3f;
-glBeg glB;
-glEn glE;
-glVert2f glV2f;
-glLineWid glLineW;
+SetPixelForm SetPixelF = (SetPixelForm) GetProcAddress(gdi32Lib, "SetPixelFormat");
+ChoosePixelForm ChoosePixelF = (ChoosePixelForm) GetProcAddress(gdi32Lib, "ChoosePixelFormat");
+wglCreateCont wglCreateC = (wglCreateCont) GetProcAddress(opengl32Lib, "wglCreateContext");
+wglMakeCurr wglMakeC = (wglMakeCurr) GetProcAddress(opengl32Lib, "wglMakeCurrent");
+glViewpor glViewp = (glViewpor) GetProcAddress(opengl32Lib, "glViewport");
+glClearCol glClearC = (glClearCol) GetProcAddress(opengl32Lib, "glClearColor");
+glCle glC = (glCle) GetProcAddress(opengl32Lib, "glClear");
+SwapBuff SwapB = (SwapBuff) GetProcAddress(gdi32Lib, "SwapBuffers");
+glCol3f glC3f = (glCol3f) GetProcAddress(opengl32Lib, "glColor3f");
+glBeg glB = (glBeg) GetProcAddress(opengl32Lib, "glBegin");
+glEn glE = (glEn) GetProcAddress(opengl32Lib, "glEnd");
+glVert2f glV2f = (glVert2f) GetProcAddress(opengl32Lib, "glVertex2f");
+glLineWid glLineW = (glLineWid) GetProcAddress(opengl32Lib, "glLineWidth");
 
 /*FÍN ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
-
 int main()
 {
-	gdi32Lib = LoadLibrary(TEXT("gdi32.dll"));
-	opengl32Lib = LoadLibrary(TEXT("opengl32.dll"));
-	ChoosePixelF = (ChoosePixelForm) GetProcAddress(gdi32Lib, "ChoosePixelFormat");
-	SetPixelF = (SetPixelForm) GetProcAddress(gdi32Lib, "SetPixelFormat");
-	wglCreateC = (wglCreateCont) GetProcAddress(opengl32Lib, "wglCreateContext");
-	wglMakeC = (wglMakeCurr) GetProcAddress(opengl32Lib, "wglMakeCurrent");
-	glViewp = (glViewpor) GetProcAddress(opengl32Lib, "glViewport");
-	glClearC = (glClearCol) GetProcAddress(opengl32Lib, "glClearColor");
-	glC = (glCle) GetProcAddress(opengl32Lib, "glClear");
-	SwapB = (SwapBuff) GetProcAddress(gdi32Lib, "SwapBuffers");
-	glC3f = (glCol3f) GetProcAddress(opengl32Lib, "glColor3f");
-	glB = (glBeg) GetProcAddress(opengl32Lib, "glBegin");
-	glE = (glEn) GetProcAddress(opengl32Lib, "glEnd");
-	glV2f = (glVert2f) GetProcAddress(opengl32Lib, "glVertex2f");
-	glLineW = (glLineWid) GetProcAddress(opengl32Lib, "glLineWidth");
 	canvas.output_handler = GetStdHandle(STD_OUTPUT_HANDLE);
 	canvas.input_handler = GetStdHandle(STD_INPUT_HANDLE);
 	if (!ChoosePixelF || !SetPixelF || !wglCreateC || !wglMakeC || !glViewp || !glClearC || !SwapB || !glC3f || !glB || !glE || !glV2f || !glLineW) return -1;
@@ -147,6 +130,7 @@ int main()
 		DispatchMessage(&canvas.Msg);
 	}
 }
+#endif
 
 /*	ÁREA: CONFIGURACIÓN DE VENTANA Y SU CONTEXTO
 		Índice:
@@ -266,8 +250,14 @@ DWORD WINAPI background_render(LPVOID null)
 		auto finish = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de finalización de dibujado
 		std::chrono::duration<double> elapsed = finish - start;
 		start = finish; //Vuelvo a tomar el tiempo de inicio
-		float time = elapsed.count();					
-		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/time)) ).c_str()));
+		float time = elapsed.count();
+		char* fps_s = new char[255];
+		int fps_i = (int) (1.0/time);
+		sprintf(fps_s,"%d", fps_i);
+		char* title = new char[255];
+		sprintf(title,"UTN FRSF - ALGORITMOS - FPS: ");
+		strcat(title,fps_s);
+		if (SetWindowTextA(canvas.window_handle,title));
 		else break;
 		updateViewPort();
 		if (!loop(time)) break; //Ejecuto el programa
@@ -442,23 +432,7 @@ bool isPressed(int key)
 	return false;
 }
 
-std::string intToString(int value) {
-	std::string number = "";
-	if (value < 10)
-	{
-		number += (char)(value + 48);
-		return number;
-	}
-	else
-	{
-		number += intToString(value / 10);
-		number += (char)(value % 10 + 48);
-		return number;
-	}
-}
-
-
-void write(std::string text, float x0, float y0, float size, bool centered = false , int color = 0xffffff)
+void write(char* text, float x0, float y0, float size, bool centered = false , int color = 0xffffff)
 {
 	double width = 3*size;
 	double height = 4*size;
@@ -467,20 +441,13 @@ void write(std::string text, float x0, float y0, float size, bool centered = fal
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
 	glC3f(red,green,blue);
-	if (!centered)
-	{
-		x0 = (((x0/canvas.width)*2)-1);
-		x = x0;
-		y0 = (((y0/canvas.height)*2)-1);
-	}else{
-		x0 -= (width-1*size)*text.size()/2.0;
-		x = x0;
-		x0 = (((x0/canvas.width)*2)-1);
-		y0 = (((y0/canvas.height)*2)-1);
-	}
+	x0 = (((x0/canvas.width)*2)-1);
+	x = x0;
+	y0 = (((y0/canvas.height)*2)-1);
 	width = (width/canvas.width);
 	height = (height/canvas.height);
-	for (int letter = 0; letter < text.size(); letter++)
+	int letter = 0;
+	while (text[letter++] != '\0')
 	{
 		glB(GL_LINE_STRIP);
 		switch (text[letter])
