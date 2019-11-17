@@ -30,11 +30,9 @@ int loop(double time)
     return 1;
 }
 ```
-Ya casi.... ahora solo falta decirle a nuestro compilador o IDE (Zinjai por ejemplo) que estamos usando openGL y debe linkear sus funciones a nuestro programa. (No tenes que instalar nada, OpenGL ya viene instalado en tu compilador).
-Para hacerlo en Zinjai, tenes que ir a ->Run->Configure->Extra arguments for compiler => Y en el textbox agrega: "-l gdi32 -l opengl32"
 <br>
 <br>
-Listo :wink: ya podes compilar y ejecutar tu programa. Deberías ver algo como esto...
+Listo! :wink: ya podes compilar y ejecutar tu programa. Deberías ver algo como esto...
 <br>
 <br>
 ![Contribution guidelines for this project](GettinStarted.PNG)
