@@ -35,4 +35,4 @@ int loop(double time)
 Listo! :wink: ya podes compilar y ejecutar tu programa. Deberías ver algo como esto...
 <br>
 <br>
-![Contribution guidelines for this project](GettinStarted.PNG)
+![Contribution guidelines for this project](GettingStarted.PNG)
