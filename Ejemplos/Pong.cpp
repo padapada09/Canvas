@@ -108,8 +108,11 @@ struct Marcador
     int color = 0xffffff;
     void show()
     {
-        write(intToString(this->p1),(0.33)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
-        write(intToString(this->p2),(0.66)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
+        char *player_1_points, *player_2_points;
+        sprintf(player_1_points,"%d",this->p1);
+        sprintf(player_2_points,"%d",this->p2);
+        write(player_1_points,(0.33)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
+        write(player_2_points,(0.66)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
     }
 }marcador;
 
@@ -149,7 +152,7 @@ int setUp()
     return 1;
 }
 
-int loop(double time)
+int loop(float time)
 {
     fillRect(0,0,WIDTH,HEIGHT,0x003399);
     field.draw();
@@ -161,7 +164,7 @@ int loop(double time)
     fillSemiCircle(100+lx,160+ly,15,0,-180,0x003399);
     fillRect(93+lx,100+ly,14,60,0x6699ff);
     fillRect(70+lx,123+ly,60,14,0x6699ff);
-    write("UTN",100+lx,65+ly,10,1);
+    // write("UTN",100+lx,65+ly,10,1);
     first_player.moveY(1,time);
     first_player.draw();
     second_player.moveY(1,time);

@@ -5,10 +5,10 @@
 
 using namespace std;
 
-string legajo;
-string contrasena;
+char legajo[255];
+char contrasena[255];
 int menu = 0;
-string nombre_equipo,integrantes[3][4];  //[Integrante][Dato]
+char nombre_equipo[255],integrantes[3][4][255];  //[Integrante][Dato]
 ifstream usuarios("usuarios.txt");
 int intentos=3;
 
@@ -42,14 +42,14 @@ void login()
 {
 	fillRect(0,0,canvas.width,canvas.height,0x333333);
 	fillRect(0.2*canvas.width,0.1*canvas.height,0.6*canvas.width,0.8*canvas.height);
-	//printLogo(0.2*canvas.width+10,canvas.height-(0.2*canvas.height + 10),0.1*canvas.height,0x000000,0xffffff);
-	//write("ALGO-TRACKER",canvas.width*0.3+5,canvas.height-(0.2*canvas.height),13,0,0x000000);
-	//write("LEGAJO:",0.2*canvas.width+20,canvas.height-(0.4*canvas.height),5,0,0x000000);
-	//write(legajo,0.3*canvas.width+20,canvas.height-(0.4*canvas.height),5,0,0x000000);
-	//write("CONTRASENA:",0.2*canvas.width+20,canvas.height-(0.6*canvas.height),5,0,0x000000);
+	printLogo(0.2*canvas.width+10,canvas.height-(0.2*canvas.height + 10),0.1*canvas.height,0x000000,0xffffff);
+	write("ALGO-TRACKER",canvas.width*0.3+5,canvas.height-(0.2*canvas.height),13,0,0x000000);
+	write("LEGAJO:",0.2*canvas.width+20,canvas.height-(0.4*canvas.height),5,0,0x000000);
+	write(legajo,0.3*canvas.width+20,canvas.height-(0.4*canvas.height),5,0,0x000000);
+	write("CONTRASENA:",0.2*canvas.width+20,canvas.height-(0.6*canvas.height),5,0,0x000000);
 	std::string blocked_string;
 	for (int i = 0; i < contrasena.size(); i++) blocked_string += '*';
-	//write(blocked_string,0.37*canvas.width+20,canvas.height-(0.6*canvas.height),5,0,0x000000);
+	write(blocked_string,0.37*canvas.width+20,canvas.height-(0.6*canvas.height),5,0,0x000000);
 }
 
 void inputContrasena(int vk)
