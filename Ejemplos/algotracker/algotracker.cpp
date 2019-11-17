@@ -5,7 +5,6 @@
 
 using namespace std;
 
-Canvas* _canvas;
 string legajo;
 string contrasena;
 int menu = 0;
@@ -25,32 +24,32 @@ void printLogo(float x, float y, float size, int color_main, int color_back)
 
 void perfil()
 {
-	fillRect(0,0,_canvas->width,_canvas->height,0x333333);
-	fillRect(0.2*_canvas->width,0.1*_canvas->height,0.6*_canvas->width,0.8*_canvas->height);
-	printLogo(0.2*_canvas->width+10,_canvas->height-(0.2*_canvas->height + 10),0.1*_canvas->height,0x000000,0xffffff);
-	write(legajo,_canvas->width*0.3+5,_canvas->height-(0.2*_canvas->height),13,0x000000);
+	fillRect(0,0,canvas.width,canvas.height,0x333333);
+	fillRect(0.2*canvas.width,0.1*canvas.height,0.6*canvas.width,0.8*canvas.height);
+	printLogo(0.2*canvas.width+10,canvas.height-(0.2*canvas.height + 10),0.1*canvas.height,0x000000,0xffffff);
+	write(legajo,canvas.width*0.3+5,canvas.height-(0.2*canvas.height),13,0,0x000000);
 }
 
 void error_login()
 {
-	fillRect(0,0,_canvas->width,_canvas->height,0xff0000);
-	fillRect(0.2*_canvas->width,0.1*_canvas->height,0.6*_canvas->width,0.8*_canvas->height);
-	printLogo(0.2*_canvas->width+10,_canvas->height-(0.2*_canvas->height + 10),0.1*_canvas->height,0x000000,0xff0000);
-	write(legajo,_canvas->width*0.3+5,_canvas->height-(0.2*_canvas->height),13,0x000000);
+	fillRect(0,0,canvas.width,canvas.height,0xff0000);
+	fillRect(0.2*canvas.width,0.1*canvas.height,0.6*canvas.width,0.8*canvas.height);
+	printLogo(0.2*canvas.width+10,canvas.height-(0.2*canvas.height + 10),0.1*canvas.height,0x000000,0xff0000);
+	write(legajo,canvas.width*0.3+5,canvas.height-(0.2*canvas.height),13,0,0x000000);
 }
 
 void login()
 {
-	fillRect(0,0,_canvas->width,_canvas->height,0x333333);
-	fillRect(0.2*_canvas->width,0.1*_canvas->height,0.6*_canvas->width,0.8*_canvas->height);
-	printLogo(0.2*_canvas->width+10,_canvas->height-(0.2*_canvas->height + 10),0.1*_canvas->height,0x000000,0xffffff);
-	write("ALGO-TRACKER",_canvas->width*0.3+5,_canvas->height-(0.2*_canvas->height),13,0x000000);
-	write("LEGAJO:",0.2*_canvas->width+20,_canvas->height-(0.4*_canvas->height),5,0x000000);
-	write(legajo,0.3*_canvas->width+20,_canvas->height-(0.4*_canvas->height),5,0x000000);
-	write("CONTRASEÑA:",0.2*_canvas->width+20,_canvas->height-(0.6*_canvas->height),5,0x000000);
+	fillRect(0,0,canvas.width,canvas.height,0x333333);
+	fillRect(0.2*canvas.width,0.1*canvas.height,0.6*canvas.width,0.8*canvas.height);
+	//printLogo(0.2*canvas.width+10,canvas.height-(0.2*canvas.height + 10),0.1*canvas.height,0x000000,0xffffff);
+	//write("ALGO-TRACKER",canvas.width*0.3+5,canvas.height-(0.2*canvas.height),13,0,0x000000);
+	//write("LEGAJO:",0.2*canvas.width+20,canvas.height-(0.4*canvas.height),5,0,0x000000);
+	//write(legajo,0.3*canvas.width+20,canvas.height-(0.4*canvas.height),5,0,0x000000);
+	//write("CONTRASENA:",0.2*canvas.width+20,canvas.height-(0.6*canvas.height),5,0,0x000000);
 	std::string blocked_string;
-	for (int i = 0; i < contrasena.size(); i++) blocked_string += '.';
-	write(blocked_string,0.5*_canvas->width+20,_canvas->height-(0.6*_canvas->height),5,0x000000);
+	for (int i = 0; i < contrasena.size(); i++) blocked_string += '*';
+	//write(blocked_string,0.37*canvas.width+20,canvas.height-(0.6*canvas.height),5,0,0x000000);
 }
 
 void inputContrasena(int vk)
@@ -88,7 +87,7 @@ void inputLegajo(int vk)
 	}
 	if (vk == 13)
 	{
-		_canvas->onKeyDown = inputContrasena;
+		canvas.onKeyDown = inputContrasena;
 		return;
 	}
 	legajo += (char) vk;
@@ -98,7 +97,7 @@ void click(int x, int y)
 {
 }
 
-int setUp(Canvas &canvas)
+int setUp()
 {   
 	canvas.width = WIDTH;
 	canvas.height = HEIGHT;
@@ -109,11 +108,10 @@ int setUp(Canvas &canvas)
 	}
 	canvas.onKeyDown = inputLegajo;
 	canvas.onLeftClickDown = click;
-	_canvas = &canvas;
 	return 1;
 }
 
-int loop(double time)
+int loop(float time)
 {
 	switch (menu)
 	{

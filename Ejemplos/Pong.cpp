@@ -8,19 +8,33 @@ int maximo(int a, int b)
     else return b;
 }
 
+struct Field
+{
+    int x = 0.1*WIDTH;
+    int y = 0.1*HEIGHT;
+    int width = 0.8*WIDTH;
+    int height = 0.8*HEIGHT; 
+    int color = 0xffffff;
+
+    void draw()
+    {
+        fillRect(this->x,this->y,this->width,this->height,this->color);
+    }
+}field;
+
 struct Player
 {
-    float x = 10;
-    float y = 10;
+    float x = field.x + 10;
+    float y = field.y + 10;
     float vy = 0;
     int width = 10;
     int height = 50;
-    int color = 0xffffff;
+    int color = 0x6699ff;
 
     void moveY(int direction, float time)
     {
         float aux = this->y + this->vy * direction *time; 
-        if (aux + this->height < HEIGHT && aux > 0) this->y = aux;
+        if (aux + this->height < (field.height+field.y) && aux > field.y) this->y = aux;
     }
 
     void draw()
@@ -35,12 +49,12 @@ struct Ball
     int MAXYSPEED = 350;
     int MINXSPEED = 300;
     int MAXXSPEED = 400;
-    float y = 40 ;
-    float x = WIDTH/2;
+    float y = field.y + 40 ;
+    float x = field.x + (field.width/2);
     float vx = MAXXSPEED/2;
     float vy = MAXYSPEED/2;
     int radius = 10;
-    int color = 0xffffff;
+    int color = 0x6699ff;
 
     void draw()
     {
@@ -51,9 +65,9 @@ struct Ball
     {
         float x_aux = this->x + this->vx * time;
         float y_aux = this->y + this->vy * time;
-        if (y_aux + this->radius > HEIGHT || y_aux - radius < 0) this->vy *= -1;
-        if (x_aux + this->radius > WIDTH) return 1;
-        if (x_aux - radius < 0) return 2;
+        if (y_aux + this->radius > field.height + field.y || y_aux - radius < field.y) this->vy *= -1;
+        if (x_aux + this->radius > field.width + field.x) return 1;
+        if (x_aux - radius < field.x) return 2;
         if (this->vx > 0)
         {
             if (y_aux < second_player.y + second_player.height + this->radius 
@@ -91,11 +105,11 @@ struct Marcador
 {
     int p1 = 0;
     int p2 = 0;
-
+    int color = 0xffffff;
     void show()
     {
-        write(intToString(this->p1),(0.33)*WIDTH,(0.8)*HEIGHT,20);
-        write(intToString(this->p2),(0.66)*WIDTH,(0.8)*HEIGHT,20);
+        write(intToString(this->p1),(0.33)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
+        write(intToString(this->p2),(0.66)*WIDTH,(0.92)*HEIGHT,16,1,this->color);
     }
 }marcador;
 
@@ -121,12 +135,11 @@ void click(int x, int y)
     ball.y = canvas.height - y;
 }
 
-int setUp(Canvas &canvas)
+int setUp()
 {
     canvas.width = WIDTH;
     canvas.height = HEIGHT;
-    second_player.x = WIDTH - second_player.x - second_player.width;
-    second_player.color = 0xf200ff;
+    second_player.x = (field.x*2 + field.width) - second_player.x - second_player.width;
     canvas.onKeyDown = onKeyDown;
     canvas.onKeyUp = onKeyUp;
     canvas.onLeftClickDown = click;
@@ -138,6 +151,17 @@ int setUp(Canvas &canvas)
 
 int loop(double time)
 {
+    fillRect(0,0,WIDTH,HEIGHT,0x003399);
+    field.draw();
+    int lx = -65;
+    int ly = 330;
+    fillSemiCircle(100+lx,100+ly,30,1,180,0x6699ff);
+    fillSemiCircle(100+lx,100+ly,15,0,180,0x003399);
+    fillSemiCircle(100+lx,160+ly,30,0,-180,0x6699ff);
+    fillSemiCircle(100+lx,160+ly,15,0,-180,0x003399);
+    fillRect(93+lx,100+ly,14,60,0x6699ff);
+    fillRect(70+lx,123+ly,60,14,0x6699ff);
+    write("UTN",100+lx,65+ly,10,1);
     first_player.moveY(1,time);
     first_player.draw();
     second_player.moveY(1,time);

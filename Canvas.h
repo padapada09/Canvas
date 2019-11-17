@@ -1,4 +1,6 @@
-//#define _WIN32_WINNT 0x0601
+#ifndef _WIN32_WINNT
+	#define _WIN32_WINNT 0x0601
+#endif
 #define PI 3.141592653
 #include <windows.h>
 #include <winuser.h>
@@ -16,16 +18,12 @@
 			#Programa = El programa desarrollado por el usuario.
 			#Cliente = Quien usa el programa.
 			#Área = Porción de codigo dedicada a una tarea puntual de la librería.
-
-		Para poder compilar se debe avisar al compilador que debe linkear las librerias necesarias para trabajar
-		con openGL. Tenes que agregar esto como parametros de compilación: "-l gdi32 -l opengl32".
-		Para hacerlo con zinjai:
-*///	->Run->Configure->Extra arguments for compiler => En el textbox agrega: "-l gdi32 -l opengl32"
 /*FÍN ÁREA: ACLARACIONES*/
 
-void emptyFunction(int){} //Funciones vacias en caso de que el usuario no quiera especificar un handler
-void emptyFunction2(int,int){}
-void emptyFunction0(){}
+/*Funciones vacias en caso de que el usuario no quiera especificar un handler*/
+void keyIgnore(int){}
+void clickIgnore(int,int){}
+void reziseIgnore(){}
 
 /*ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
 
@@ -35,13 +33,13 @@ struct Canvas
 	HANDLE output_handler;
 	HANDLE input_handler;
 	bool key_pressed[256] = {0};
-	void (*onKeyDown)(int) = emptyFunction; //Punteros de funciones que el usuario puede asignar a sus propios handlers
-	void (*onKeyUp)(int) = emptyFunction;
-	void (*onResizing)() = emptyFunction0;
-	void (*onLeftClickDown)(int,int) = emptyFunction2;
-	void (*onRightClickDown)(int,int) = emptyFunction2;
-	void (*onLeftClickUp)(int,int) = emptyFunction2;
-	void (*onRightClickUp)(int,int) = emptyFunction2;
+	void (*onKeyDown)(int) = keyIgnore; //Punteros de funciones que el usuario puede asignar a sus propios handlers
+	void (*onKeyUp)(int) = keyIgnore;
+	void (*onResizing)() = reziseIgnore;
+	void (*onLeftClickDown)(int,int) = clickIgnore;
+	void (*onRightClickDown)(int,int) = clickIgnore;
+	void (*onLeftClickUp)(int,int) = clickIgnore;
+	void (*onRightClickUp)(int,int) = clickIgnore;
 	HGLRC opengl_context;
 	MSG Msg;
 	WNDCLASSEX window_class;
@@ -78,16 +76,64 @@ void findColor(int hex,int color[2], HANDLE hStdout);
 			para configurar la pantalla (y posiblemente despues la librería permita hacer
 			más configuraciones).
 
-			*/int loop(double time);/*
+			*/int loop(float time);/*
 			El hilo asincrónico llama a loop por cada frame que pone en la pantalla.
 			Le manda como parametro un double time, que le avisa al programa, 
 	*///	cuanto tiempo paso desde el útlimo frame mostrado al cliente.
 	/*FÍN SUB-ÁREA: DECLARACIÓN DE PROTOTIPOS VIRTUALES*/
 
+HINSTANCE gdi32Lib;
+HINSTANCE opengl32Lib;
+
+typedef BOOL (__stdcall *SetPixelForm)(HDC,int,const PIXELFORMATDESCRIPTOR*);
+typedef BOOL (__stdcall *ChoosePixelForm)(HDC,const PIXELFORMATDESCRIPTOR*);
+typedef HGLRC (__stdcall *wglCreateCont)(HDC);
+typedef BOOL (__stdcall *wglMakeCurr)(HDC,HGLRC);
+typedef void (__stdcall *glViewpor)(GLint,GLint,GLsizei,GLsizei);
+typedef void (__stdcall *glClearCol)(GLclampf,GLclampf,GLclampf,GLclampf);
+typedef void (__stdcall *glCle)(GLbitfield);
+typedef BOOL (__stdcall *SwapBuff)(HDC);
+typedef void (__stdcall *glCol3f)(GLfloat,GLfloat,GLfloat);
+typedef void (__stdcall *glBeg)(GLenum);
+typedef void (__stdcall *glEn)(void);
+typedef void (__stdcall *glVert2f)(GLfloat,GLfloat);
+typedef void (__stdcall *glLineWid)(GLfloat);
+SetPixelForm SetPixelF;
+ChoosePixelForm ChoosePixelF;
+wglCreateCont wglCreateC;
+wglMakeCurr wglMakeC;
+glViewpor glViewp;
+glClearCol glClearC;
+glCle glC;
+SwapBuff SwapB;
+glCol3f glC3f;
+glBeg glB;
+glEn glE;
+glVert2f glV2f;
+glLineWid glLineW;
+
+/*FÍN ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
+
 int main()
 {
+	gdi32Lib = LoadLibrary(TEXT("gdi32.dll"));
+	opengl32Lib = LoadLibrary(TEXT("opengl32.dll"));
+	ChoosePixelF = (ChoosePixelForm) GetProcAddress(gdi32Lib, "ChoosePixelFormat");
+	SetPixelF = (SetPixelForm) GetProcAddress(gdi32Lib, "SetPixelFormat");
+	wglCreateC = (wglCreateCont) GetProcAddress(opengl32Lib, "wglCreateContext");
+	wglMakeC = (wglMakeCurr) GetProcAddress(opengl32Lib, "wglMakeCurrent");
+	glViewp = (glViewpor) GetProcAddress(opengl32Lib, "glViewport");
+	glClearC = (glClearCol) GetProcAddress(opengl32Lib, "glClearColor");
+	glC = (glCle) GetProcAddress(opengl32Lib, "glClear");
+	SwapB = (SwapBuff) GetProcAddress(gdi32Lib, "SwapBuffers");
+	glC3f = (glCol3f) GetProcAddress(opengl32Lib, "glColor3f");
+	glB = (glBeg) GetProcAddress(opengl32Lib, "glBegin");
+	glE = (glEn) GetProcAddress(opengl32Lib, "glEnd");
+	glV2f = (glVert2f) GetProcAddress(opengl32Lib, "glVertex2f");
+	glLineW = (glLineWid) GetProcAddress(opengl32Lib, "glLineWidth");
 	canvas.output_handler = GetStdHandle(STD_OUTPUT_HANDLE);
 	canvas.input_handler = GetStdHandle(STD_INPUT_HANDLE);
+	if (!ChoosePixelF || !SetPixelF || !wglCreateC || !wglMakeC || !glViewp || !glClearC || !SwapB || !glC3f || !glB || !glE || !glV2f || !glLineW) return -1;
 	setUp(); //Tomo las coordenadas y handlers que el usuario quiera especificar
 	startWindow(); //Seteo la ventana
 	ShowWindow(canvas.window_handle,1);
@@ -117,33 +163,30 @@ void startWindow()
 	canvas.window_class.lpfnWndProc = windowProcess;
 	canvas.window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
 	canvas.window_class.hInstance = GetModuleHandle(nullptr);
-	canvas.window_class.lpszClassName = "CanvasGL";
+	canvas.window_class.lpszClassName = TEXT("CanvasGL");
 	RegisterClassEx(&canvas.window_class);
 	DWORD dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
 	DWORD dwStyle = WS_BORDER | WS_SYSMENU | WS_SIZEBOX | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
-	canvas.window_handle = CreateWindowEx(dwExStyle,"CanvasGL","UTN FRSF - Canvas",dwStyle,0,0, canvas.width, canvas.height,NULL, NULL, GetModuleHandle(nullptr), NULL);
+	canvas.window_handle = CreateWindowEx(dwExStyle,TEXT("CanvasGL"),TEXT("UTN FRSF - Canvas"),dwStyle,0,0, canvas.width, canvas.height,NULL, NULL, GetModuleHandle(nullptr), NULL);
 	canvas.pfd = {sizeof(PIXELFORMATDESCRIPTOR),1,PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER, PFD_TYPE_RGBA,32,  0, 0, 0, 0, 0, 0,0,0,0,0, 0, 0, 0,24,8,0,PFD_MAIN_PLANE,0,0, 0,0};
 	canvas.device_context = GetDC(canvas.window_handle);
-	canvas.pixel_format_number = ChoosePixelFormat(canvas.device_context,&canvas.pfd);
-	SetPixelFormat(canvas.device_context,canvas.pixel_format_number,&canvas.pfd);
+	canvas.pixel_format_number = ChoosePixelF(canvas.device_context,&canvas.pfd);
+	SetPixelF(canvas.device_context,canvas.pixel_format_number,&canvas.pfd);
 }
 
 void setContext()
 {
-	canvas.opengl_context = wglCreateContext(canvas.device_context);
-	wglMakeCurrent(canvas.device_context,canvas.opengl_context);
+	canvas.opengl_context = wglCreateC(canvas.device_context);
+	wglMakeC(canvas.device_context,canvas.opengl_context);
 }
 
 void updateViewPort()
-{
-	// std::cout << "REZISING..." << std::endl;
-	// std::cout << canvas.width << " " << canvas.height << std::endl;
+{	
 	RECT client_screen;
 	GetClientRect(canvas.window_handle,&client_screen);
 	canvas.width = client_screen.right - client_screen.left;
 	canvas.height = client_screen.bottom - client_screen.top;
-	glViewport(0,0,client_screen.right,client_screen.bottom);
-	// std::cout << canvas.width << " " << canvas.height << std::endl;
+	glViewp(0,0,client_screen.right,client_screen.bottom);	
 }
 
 LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -200,40 +243,36 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 	}
 	return 0;
 }
-
 /*FÍN ÁREA: CONFIGURACIÓN DE VENTANA Y SU CONTEXTO*/
 
 /*		Esta función se ejecuta en un hilo asincrónico.
 		Se encarga de calcular los frames por segundo, de imprimir en pantalla, 
 *///	y de ejecucar la función del programa.
+
+/*background_render -> Función ejecutada por un hilo secundario, encargada de llamar a las instrucciones de dibujo
+definidas por el usuario. Además también calcula el tiempo de*/
 DWORD WINAPI background_render(LPVOID null)
 {
 	setContext();
 	RECT client_screen;
 	GetClientRect(canvas.window_handle,&client_screen);
-	glViewport(0,0,client_screen.right,client_screen.bottom);
-	glClearColor(0,0,0,1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-	double times[1000] = {0};
-	int time_size = 0;
+	glViewp(0,0,client_screen.right,client_screen.bottom);
+	glClearC(0,0,0,1.0f);
+	glC(GL_COLOR_BUFFER_BIT);	
 	auto start = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de inicio de dibujado
-	SwapBuffers(canvas.device_context); //Esta función basicamente me imprime en pantalla lo dibujado
+	SwapB(canvas.device_context); //Esta función basicamente me imprime en pantalla lo dibujado
 	while(1)
 	{
 		auto finish = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de finalización de dibujado
 		std::chrono::duration<double> elapsed = finish - start;
 		start = finish; //Vuelvo a tomar el tiempo de inicio
-		times[time_size++] = elapsed.count();
-		if (time_size == 1000) time_size = 0;
-		double avg_time = 0;
-		for (int i = 0; i < 1000; i++) avg_time += times[i];
-		avg_time /= 1000;
-		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/avg_time)) ).c_str()));
+		float time = elapsed.count();					
+		if (SetWindowTextA(canvas.window_handle,("UTN FRSF - ALGORITMOS - FPS: " + intToString( (int) (1.0/time)) ).c_str()));
 		else break;
 		updateViewPort();
-		if (!loop(times[time_size - 1])) break; //Ejecuto el programa
-		SwapBuffers(canvas.device_context); //Imprimo lo ejecutado en el programa
-		glClear(GL_COLOR_BUFFER_BIT); //Limpio la pantalla
+		if (!loop(time)) break; //Ejecuto el programa
+		SwapB(canvas.device_context); //Imprimo lo ejecutado en el programa
+		glC(GL_COLOR_BUFFER_BIT); //Limpio la pantalla
 	};
 	/*Retorno esto porque el metodo CreateThread me pide que tenga este tipo de retorno.
 	No lo uso para nada*/
@@ -244,27 +283,25 @@ DWORD WINAPI background_render(LPVOID null)
 /*
 AREA DE CODIGO : INSTRUCCIONES DE DIBUJO
 Tips:
-	#La función glBegin y glEnd me permiten conectar vectores de diferentes maneras,
-		según el parametro que le pases a glBegin();
-	#glVertex2f te permite definir un vector/punto en el espacio cuyas dimensiones deben estár en ([-1,1],[-1,1]).
+	#La función glB y glE me permiten conectar vectores de diferentes maneras,
+		según el parametro que le pases a glB();
+	#glV2f te permite definir un vector/punto en el espacio cuyas dimensiones deben estár en ([-1,1],[-1,1]).
 		Siendo que x=1 es el extremo derecho de la pantalla, y x=-1 es el extremo izquierdo (De manera analoga con y).
 	#glPointSize te permite definir el tamaño del punto en pixeles.
-	#glLineWidth te permite definir el ancho del vector trazado en pixeles (No estoy seguro si en pixeles).
+	#glLineW te permite definir el ancho del vector trazado en pixeles (No estoy seguro si en pixeles).
 */
 void drawLine(double x0, double y0, double x1, double y1, int color = 0xffffff)
 {
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
-	glBegin(GL_LINES);
+	glC3f(red,green,blue);
+	glB(GL_LINES);
 	x0 = (((x0/canvas.width)*2)-1);
 	y0 = (((y0/canvas.height)*2)-1);
 	x1 = (((x1/canvas.width)*2)-1);
-	y1 = (((y1/canvas.height)*2)-1);
-	glVertex2d(x0,y0);
-	glVertex2d(x1,y1);
-	glEnd();
+	y1 = (((y1/canvas.height)*2)-1);(x0,y0);(x1,y1);
+	glE();
 }
 
 void drawLineByAngle(int x0, int y0, double angle, double length, int color = 0xffffff)
@@ -281,11 +318,11 @@ void drawCircle(double cx, double cy, double r, int num_segments = 0)
 	float radial_factor = cosf(theta);
 	float x = r;
 	float y = 0; 
-    glColor3f(1.0,1.0,1.0);
-	glBegin(GL_LINE_LOOP); 
+    glC3f(1.0,1.0,1.0);
+	glB(GL_LINE_LOOP); 
 	for(int ii = 0; ii < num_segments; ii++) 
 	{
-		glVertex2f(((((x+cx)/canvas.width)*2)-1),((((y+cy)/canvas.height)*2)-1));
+		glV2f(((((x+cx)/canvas.width)*2)-1),((((y+cy)/canvas.height)*2)-1));
 		float tx = -y; 
 		float ty = x;
 		x += tx * tangetial_factor; 
@@ -293,7 +330,7 @@ void drawCircle(double cx, double cy, double r, int num_segments = 0)
 		x *= radial_factor; 
 		y *= radial_factor; 
 	} 
-	glEnd();
+	glE();
 }
 
 void drawSemiCircle(double x0, double y0, double radius, double from, double to, int color = 0xffffff)
@@ -302,8 +339,8 @@ void drawSemiCircle(double x0, double y0, double radius, double from, double to,
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
-	glBegin(GL_LINE_STRIP);
+	glC3f(red,green,blue);
+	glB(GL_LINE_STRIP);
 	int i_add = 1;
 	if (from >= to) i_add = -1; 
 	for (int i=from; i != to; i += i_add)
@@ -311,9 +348,9 @@ void drawSemiCircle(double x0, double y0, double radius, double from, double to,
 		float degInRad = i*DEG2RAD;
 		double x = (x0+cos(degInRad)*radius);
 		double y = (y0+sin(degInRad)*radius);
-		glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+		glV2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
 	}
-	glEnd();
+	glE();
 }
 
 void fillSemiCircle(double x0, double y0, double radius, double from, double to, int color = 0xffffff)
@@ -322,8 +359,8 @@ void fillSemiCircle(double x0, double y0, double radius, double from, double to,
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
-	glBegin(GL_POLYGON);
+	glC3f(red,green,blue);
+	glB(GL_POLYGON);
 	int i_add = 1;
 	if (from >= to) i_add = -1; 
 	for (int i=from; i != to; i += i_add)
@@ -331,9 +368,9 @@ void fillSemiCircle(double x0, double y0, double radius, double from, double to,
 		float degInRad = i*DEG2RAD;
 		double x = (x0+cos(degInRad)*radius);
 		double y = (y0+sin(degInRad)*radius);
-		glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+		glV2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
 	}
-	glEnd();
+	glE();
 }
 
 void fillCircle(double x0, double y0, double radius, int num_segments = 0, int color = 0xffffff)
@@ -347,12 +384,12 @@ void fillCircle(double x0, double y0, double radius, int num_segments = 0, int c
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-    glColor3f(red,green,blue);
-	glLineWidth(1.0);
-	glBegin(GL_POLYGON);
+    glC3f(red,green,blue);
+	glLineW(1.0);
+	glB(GL_POLYGON);
 	for(int ii = 0; ii < num_segments; ii++)
 	{
-		glVertex2d(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
+(((((x+x0)/canvas.width)*2)-1),((((y+y0)/canvas.height)*2)-1));
 		float tx = -y;
 		float ty = x;
 		x += tx * tangetial_factor;
@@ -360,7 +397,7 @@ void fillCircle(double x0, double y0, double radius, int num_segments = 0, int c
 		x *= radial_factor;
 		y *= radial_factor;
 	}
-	glEnd();
+	glE();
 }
 
 void drawRect(double x, double y, double width, double height, int color = 0xffffff)
@@ -368,27 +405,27 @@ void drawRect(double x, double y, double width, double height, int color = 0xfff
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glBegin(GL_LINE_LOOP);
-	glColor3f(red,green,blue);
-	glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glVertex2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glVertex2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
-	glVertex2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
-	glEnd();
+	glB(GL_LINE_LOOP);
+	glC3f(red,green,blue);
+	glV2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+	glV2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+	glV2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
+	glV2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
+	glE();
 }
 
 void fillRect(double x, double y, double width, double height, int color = 0xffffff)
 {    
-	glBegin(GL_POLYGON);
+	glB(GL_POLYGON);
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
-	glVertex2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glVertex2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glVertex2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
-	glVertex2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
-	glEnd();
+	glC3f(red,green,blue);
+	glV2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+	glV2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
+	glV2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
+	glV2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
+	glE();
 }
 
 void drawTriangle(double x0, double y0, double x1, double y1, double x2, double y2, int color = 0xffffff)
@@ -425,16 +462,19 @@ void write(std::string text, float x0, float y0, float size, bool centered = fal
 {
 	double width = 3*size;
 	double height = 4*size;
+	float x;
 	float red = (((color/256)/256)%256)/255.0;
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
-	glColor3f(red,green,blue);
+	glC3f(red,green,blue);
 	if (!centered)
 	{
 		x0 = (((x0/canvas.width)*2)-1);
+		x = x0;
 		y0 = (((y0/canvas.height)*2)-1);
 	}else{
 		x0 -= (width-1*size)*text.size()/2.0;
+		x = x0;
 		x0 = (((x0/canvas.width)*2)-1);
 		y0 = (((y0/canvas.height)*2)-1);
 	}
@@ -442,437 +482,457 @@ void write(std::string text, float x0, float y0, float size, bool centered = fal
 	height = (height/canvas.height);
 	for (int letter = 0; letter < text.size(); letter++)
 	{
-		glBegin(GL_LINE_STRIP);
+		glB(GL_LINE_STRIP);
 		switch (text[letter])
 		{
 			case 'a':
 			case 'A':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width,y0+height*0.6);
-				glVertex2f(x0,y0+height*0.6);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width,y0);
+				glV2f(x0+width,y0+height*0.6);
+				glV2f(x0,y0+height*0.6);
 				x0 += width+0.002*size;
 				break;
 			case 'b':
 			case 'B':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width*0.7,y0+height);
-				glVertex2f(x0+width*0.7,y0+height*0.6);
-				glVertex2f(x0,y0+height*0.6);
-				glVertex2f(x0+width,y0+height*0.6);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width*0.7,y0+height);
+				glV2f(x0+width*0.7,y0+height*0.6);
+				glV2f(x0,y0+height*0.6);
+				glV2f(x0+width,y0+height*0.6);
+				glV2f(x0+width,y0);
+				glV2f(x0,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'c':
 			case 'C':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0);
+				glV2f(x0+width,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'd':
 			case 'D':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width*0.8,y0+height);
-				glVertex2f(x0+width,y0+height*0.8);
-				glVertex2f(x0+width,y0+height*0.2);
-				glVertex2f(x0+width*0.8,y0);
-				glVertex2f(x0,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width*0.8,y0+height);
+				glV2f(x0+width,y0+height*0.8);
+				glV2f(x0+width,y0+height*0.2);
+				glV2f(x0+width*0.8,y0);
+				glV2f(x0,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'e':
 			case 'E':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0+width,y0+height/2);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0+height/2);
+				glV2f(x0+width,y0+height/2);
+				glV2f(x0,y0+height/2);
+				glV2f(x0,y0);
+				glV2f(x0+width,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'f':
 			case 'F':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0+width,y0+height/2);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0+height/2);
+				glV2f(x0+width,y0+height/2);
 				x0 += width+0.002*size;
 				break;
 			case 'g':
 			case 'G':
-				glVertex2f(x0+width*0.6,y0+height*0.6);
-				glVertex2f(x0+width,y0+height*0.6);
-				glVertex2f(x0+width,y0+height*0.2);
-				glVertex2f(x0+width*0.8,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0+width*0.2,y0+height);
-				glVertex2f(x0+width,y0+height);
+				glV2f(x0+width*0.6,y0+height*0.6);
+				glV2f(x0+width,y0+height*0.6);
+				glV2f(x0+width,y0+height*0.2);
+				glV2f(x0+width*0.8,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.2,y0+height);
+				glV2f(x0+width,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'h':
 			case 'H':
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0+width,y0+height/2);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width,y0+height/2);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0+height/2);
+				glV2f(x0+width,y0+height/2);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width,y0);
+				glV2f(x0+width,y0+height/2);
+				glV2f(x0,y0+height/2);
+				glV2f(x0,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'i':
 			case 'I':
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width/4,y0);
-				glVertex2f(x0+width/4,y0+height);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width/2,y0+height);
-				glVertex2f(x0+width/4,y0+height);
-				glVertex2f(x0+width/4,y0);
-				glVertex2f(x0+width/2,y0);
+				glV2f(x0,y0);
+				glV2f(x0+width/4,y0);
+				glV2f(x0+width/4,y0+height);
+				glV2f(x0,y0+height);
+				glV2f(x0+width/2,y0+height);
+				glV2f(x0+width/4,y0+height);
+				glV2f(x0+width/4,y0);
+				glV2f(x0+width/2,y0);
 				x0 += width/2+0.002*size;
 				break;
 			case 'j':
 			case 'J':
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width/2,y0+height);
-				glVertex2f(x0+width/2,y0+height*0.3);
-				glVertex2f(x0+width/3,y0);
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height*0.3);
+				glV2f(x0,y0+height);
+				glV2f(x0+width/2,y0+height);
+				glV2f(x0+width/2,y0+height*0.3);
+				glV2f(x0+width/3,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height*0.3);
 				x0 += width/2+0.002*size;
 				break;
 			case 'k':
 			case 'K':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0+height/2);
-				glVertex2f(x0+width,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0+height/2);
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0+height/2);
+				glV2f(x0+width,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'l':
 			case 'L':
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0);
+				glV2f(x0+width,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'm':
 			case 'M':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width/2,y0+height*0.6);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width,y0);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width/2,y0+height*0.6);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'n':
 			case 'N':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width,y0+height);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0);
+				glV2f(x0+width,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'o':
 			case 'O':
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0+width*0.2,y0+height);
-				glVertex2f(x0+width*0.8,y0+height);
-				glVertex2f(x0+width,y0+height*0.8);
-				glVertex2f(x0+width,y0+height*0.2);
-				glVertex2f(x0+width*0.8,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.2,y0+height);
+				glV2f(x0+width*0.8,y0+height);
+				glV2f(x0+width,y0+height*0.8);
+				glV2f(x0+width,y0+height*0.2);
+				glV2f(x0+width*0.8,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
 				x0 += width+0.002*size;
 				break;
 			case 'p':
 			case 'P':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width*0.9,y0+height);
-				glVertex2f(x0+width,y0+height*0.9);
-				glVertex2f(x0+width,y0+height*0.6);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0,y0+height*0.5);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width*0.9,y0+height);
+				glV2f(x0+width,y0+height*0.9);
+				glV2f(x0+width,y0+height*0.6);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0,y0+height*0.5);
 				x0 += width+0.002*size;
 				break;
 			case 'q':
 			case 'Q':
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0+width*0.2,y0+height);
-				glVertex2f(x0+width*0.8,y0+height);
-				glVertex2f(x0+width,y0+height*0.8);
-				glVertex2f(x0+width,y0+height*0.2);
-				glVertex2f(x0+width*0.9,y0+height*0.1);
-				glVertex2f(x0+width*0.6,y0+height*0.3);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width*0.9,y0+height*0.1);
-				glVertex2f(x0+width*0.8,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.2,y0+height);
+				glV2f(x0+width*0.8,y0+height);
+				glV2f(x0+width,y0+height*0.8);
+				glV2f(x0+width,y0+height*0.2);
+				glV2f(x0+width*0.9,y0+height*0.1);
+				glV2f(x0+width*0.6,y0+height*0.3);
+				glV2f(x0+width,y0);
+				glV2f(x0+width*0.9,y0+height*0.1);
+				glV2f(x0+width*0.8,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
 				x0 += width+0.002*size;
 				break;
 			case 'r':
 			case 'R':
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width*0.9,y0+height);
-				glVertex2f(x0+width,y0+height*0.9);
-				glVertex2f(x0+width,y0+height*0.6);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0,y0+height*0.5);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width*0.9,y0+height);
+				glV2f(x0+width,y0+height*0.9);
+				glV2f(x0+width,y0+height*0.6);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0+width,y0);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0,y0+height*0.5);
 				x0 += width+0.002*size;
 				break;
 			case 's':
 			case 'S':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width*0.1,y0+height);
-				glVertex2f(x0,y0+height*0.9);
-				glVertex2f(x0,y0+height*0.55);
-				glVertex2f(x0+width*0.1,y0+height*0.50);
-				glVertex2f(x0+width*0.9,y0+height*0.50);
-				glVertex2f(x0+width,y0+height*0.45);
-				glVertex2f(x0+width,y0+height*0.1);
-				glVertex2f(x0+width*0.9,y0);
-				glVertex2f(x0,y0);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width*0.1,y0+height);
+				glV2f(x0,y0+height*0.9);
+				glV2f(x0,y0+height*0.55);
+				glV2f(x0+width*0.1,y0+height*0.50);
+				glV2f(x0+width*0.9,y0+height*0.50);
+				glV2f(x0+width,y0+height*0.45);
+				glV2f(x0+width,y0+height*0.1);
+				glV2f(x0+width*0.9,y0);
+				glV2f(x0,y0);
 				x0 += width+0.002*size;
 				break;
 			case 't':
 			case 'T':
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width*0.5,y0+height);
-				glVertex2f(x0+width*0.5,y0);
-				glVertex2f(x0+width*0.5,y0+height);
-				glVertex2f(x0+width,y0+height);
+				glV2f(x0,y0+height);
+				glV2f(x0+width*0.5,y0+height);
+				glV2f(x0+width*0.5,y0);
+				glV2f(x0+width*0.5,y0+height);
+				glV2f(x0+width,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'u':
 			case 'U':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width,y0+height*0.2);
-				glVertex2f(x0+width*0.8,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width,y0+height*0.2);
+				glV2f(x0+width*0.8,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'v':
 			case 'V':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width/2,y0);
-				glVertex2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width/2,y0);
+				glV2f(x0,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'w':
 			case 'W':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width/2,y0+height*0.6);
-				glVertex2f(x0,y0);
-				glVertex2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width,y0);
+				glV2f(x0+width/2,y0+height*0.6);
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'x':
 			case 'X':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width/2,y0+height/2);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0);
-				glVertex2f(x0+width/2,y0+height/2);
-				glVertex2f(x0,y0);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width/2,y0+height/2);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0);
+				glV2f(x0+width/2,y0+height/2);
+				glV2f(x0,y0);
 				x0 += width+0.002*size;
 				break;
 			case 'y':
 			case 'Y':
-				glVertex2f(x0+width/2,y0);
-				glVertex2f(x0+width/2,y0+height*0.6);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width/2,y0+height*0.6);
-				glVertex2f(x0,y0+height);
+				glV2f(x0+width/2,y0);
+				glV2f(x0+width/2,y0+height*0.6);
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width/2,y0+height*0.6);
+				glV2f(x0,y0+height);
 				x0 += width+0.002*size;
 				break;
 			case 'z':
 			case 'Z':
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width,y0);
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0);
+				glV2f(x0+width,y0);
 				x0 += width+0.002*size;
+				break;
+			case '0':
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.2,y0+height);
+				glV2f(x0+width*0.8,y0+height);
+				glV2f(x0+width,y0+height*0.8);
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0+width,y0+height*0.8);
+				glV2f(x0+width,y0+height*0.2);
+				glV2f(x0+width*0.8,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
+				x0 += width+0.002*size;
+				break;
+			case '1':
+				glV2f(x0,y0+height*0.6);
+				glV2f(x0+width*0.4,y0+height);
+				glV2f(x0+width*0.4,y0);
+				x0 += width*0.4+0.002*size;
+				break;
+			case '2':
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.2,y0+height);
+				glV2f(x0+width*0.8,y0+height);
+				glV2f(x0+width,y0+height*0.8);
+				glV2f(x0+width,y0+height*0.7);
+				glV2f(x0,y0);
+				glV2f(x0+width,y0);
+				x0 += width+0.002*size;
+				break;
+			case '3':
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.1,y0+height);
+				glV2f(x0+width*0.9,y0+height);
+				glV2f(x0+width,y0+height*0.9);
+				glV2f(x0+width,y0+height*0.5);
+				glV2f(x0+width*0.5,y0+height*0.5);
+				glV2f(x0+width,y0+height*0.5);
+				glV2f(x0+width,y0+height*0.1);
+				glV2f(x0+width*0.9,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
+				x0 += width+0.002*size;
+				break;
+			case '4':
+				glV2f(x0+width*0.6,y0);
+				glV2f(x0+width*0.6,y0+height);
+				glV2f(x0,y0+height*0.3);
+				glV2f(x0+width,y0+height*0.3);
+				x0 += width+0.002*size;
+				break;
+			case '5':
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0+height);
+				glV2f(x0,y0+height*0.5);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0+width,y0+height*0.4);
+				glV2f(x0+width,y0+height*0.1);
+				glV2f(x0+width*0.9,y0);
+				glV2f(x0,y0);
+				x0 += width+0.002*size;
+				break;
+			case '6':
+				glV2f(x0+width,y0+height);
+				glV2f(x0+width*0.2,y0+height);
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0,y0+height*0.5);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0+width,y0+height*0.4);
+				glV2f(x0+width,y0+height*0.1);
+				glV2f(x0+width*0.9,y0);
+				glV2f(x0+width*0.2,y0);
+				glV2f(x0,y0+height*0.2);
+				glV2f(x0,y0+height*0.5);
+				x0 += width+0.002*size;
+				break;
+			case '7':
+				glV2f(x0,y0+height);
+				glV2f(x0+width,y0+height);
+				glV2f(x0,y0);
+				x0 += width+0.002*size;
+				break;
+			case '8':
+				glV2f(x0+width*0.1,y0+height);
+				glV2f(x0+width*0.9,y0+height);
+				glV2f(x0+width,y0+height*0.9);
+				glV2f(x0+width,y0+height*0.6);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0+width,y0+height*0.4);
+				glV2f(x0+width,y0+height*0.1);
+				glV2f(x0+width*0.9,y0);
+				glV2f(x0+width*0.1,y0);
+				glV2f(x0,y0+height*0.1);
+				glV2f(x0,y0+height*0.4);
+				glV2f(x0+width*0.1,y0+height*0.5);
+				glV2f(x0+width*0.9,y0+height*0.5);
+				glV2f(x0+width*0.1,y0+height*0.5);
+				glV2f(x0,y0+height*0.6);
+				glV2f(x0,y0+height*0.9);
+				glV2f(x0+width*0.1,y0+height);
+				x0 += width+0.002*size;
+				break;
+			case '9':
+				glV2f(x0+width,y0+height*0.5);
+				glV2f(x0+width*0.1,y0+height*0.5);
+				glV2f(x0,y0+height*0.6);
+				glV2f(x0,y0+height*0.9);
+				glV2f(x0+width*0.1,y0+height);
+				glV2f(x0+width*0.9,y0+height);
+				glV2f(x0+width,y0+height*0.9);
+				glV2f(x0+width,y0);
+				x0 += width+0.002*size;
+				break;
+			case '|':
+				glV2f(x0,y0);
+				glV2f(x0,y0+height);				
+				x0 += width*0.2+0.002*size;
+				break;
+			case ':':
+				glV2f(x0,y0);
+				glV2f(x0+width*0.1,y0);
+				glV2f(x0+width*0.1,y0+height*0.1);
+				glV2f(x0,y0+height*0.1);
+				glV2f(x0,y0);
+				glE();
+				glB(GL_LINE_STRIP);
+				glV2f(x0,y0+height*0.8);
+				glV2f(x0+width*0.1,y0+height*0.8);
+				glV2f(x0+width*0.1,y0+height*0.1+height*0.8);
+				glV2f(x0,y0+height*0.1+height*0.8);
+				glV2f(x0,y0+height*0.8);
+				x0 += width*0.2+0.002*size;
 				break;
 			case ' ':
 				x0 += width*0.7+0.002*size;
 				break;
 			case '.':
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width*0.1,y0);
-				glVertex2f(x0+width*0.1,y0+height*0.1);
-				glVertex2f(x0,y0+height*0.1);
-				glVertex2f(x0,y0);
+				glV2f(x0,y0);
+				glV2f(x0+width*0.1,y0);
+				glV2f(x0+width*0.1,y0+height*0.1);
+				glV2f(x0,y0+height*0.1);
+				glV2f(x0,y0);
 				x0 += width*0.1+0.002*size;
 				break;
 			case '!':
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width*0.1,y0);
-				glVertex2f(x0+width*0.1,y0+height*0.1);
-				glVertex2f(x0,y0+height*0.1);
-				glVertex2f(x0,y0);
-				glEnd();
-				glBegin(GL_LINE_STRIP);
-				glVertex2f(x0+width*0.05,y0+height*0.2);
-				glVertex2f(x0+width*0.05,y0+height);
+				glV2f(x0,y0);
+				glV2f(x0+width*0.1,y0);
+				glV2f(x0+width*0.1,y0+height*0.1);
+				glV2f(x0,y0+height*0.1);
+				glV2f(x0,y0);
+				glE();
+				glB(GL_LINE_STRIP);
+				glV2f(x0+width*0.05,y0+height*0.2);
+				glV2f(x0+width*0.05,y0+height);
 				x0 += width*0.1+0.002*size;
 				break;
 			case '*':
-				glVertex2f(x0+width*0.4,y0+height*0.4);
-				glVertex2f(x0+width*0.4,y0+height);
-				glVertex2f(x0+width*0.4,y0+height*0.7);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width*0.8,y0+height*0.4);
-				glVertex2f(x0+width*0.4,y0+height*0.7);
-				glVertex2f(x0,y0+height*0.4);
-				glVertex2f(x0+width*0.8,y0+height);
-				glVertex2f(x0+width*0.4,y0+height*0.7);
-				glVertex2f(x0+width*0.8,y0+height*0.7);
-				glVertex2f(x0+width*0,y0+height*0.7);
+				glV2f(x0+width*0.4,y0+height*0.4);
+				glV2f(x0+width*0.4,y0+height);
+				glV2f(x0+width*0.4,y0+height*0.7);
+				glV2f(x0,y0+height);
+				glV2f(x0+width*0.8,y0+height*0.4);
+				glV2f(x0+width*0.4,y0+height*0.7);
+				glV2f(x0,y0+height*0.4);
+				glV2f(x0+width*0.8,y0+height);
+				glV2f(x0+width*0.4,y0+height*0.7);
+				glV2f(x0+width*0.8,y0+height*0.7);
+				glV2f(x0+width*0,y0+height*0.7);
 				x0 += width*0.8+0.002*size;
-				break;
-			case '0':
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0+width*0.2,y0+height);
-				glVertex2f(x0+width*0.8,y0+height);
-				glVertex2f(x0+width,y0+height*0.8);
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0+width,y0+height*0.8);
-				glVertex2f(x0+width,y0+height*0.2);
-				glVertex2f(x0+width*0.8,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
-				x0 += width+0.002*size;
-				break;
-			case '1':
-				glVertex2f(x0,y0+height*0.6);
-				glVertex2f(x0+width*0.4,y0+height);
-				glVertex2f(x0+width*0.4,y0);
-				x0 += width*0.4+0.002*size;
-				break;
-			case '2':
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0+width*0.2,y0+height);
-				glVertex2f(x0+width*0.8,y0+height);
-				glVertex2f(x0+width,y0+height*0.8);
-				glVertex2f(x0+width,y0+height*0.7);
-				glVertex2f(x0,y0);
-				glVertex2f(x0+width,y0);
-				x0 += width+0.002*size;
-				break;
-			case '3':
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0+width*0.1,y0+height);
-				glVertex2f(x0+width*0.9,y0+height);
-				glVertex2f(x0+width,y0+height*0.9);
-				glVertex2f(x0+width,y0+height*0.5);
-				glVertex2f(x0+width*0.5,y0+height*0.5);
-				glVertex2f(x0+width,y0+height*0.5);
-				glVertex2f(x0+width,y0+height*0.1);
-				glVertex2f(x0+width*0.9,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
-				x0 += width+0.002*size;
-				break;
-			case '4':
-				glVertex2f(x0+width*0.6,y0);
-				glVertex2f(x0+width*0.6,y0+height);
-				glVertex2f(x0,y0+height*0.3);
-				glVertex2f(x0+width,y0+height*0.3);
-				x0 += width+0.002*size;
-				break;
-			case '5':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0,y0+height*0.5);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0+width,y0+height*0.4);
-				glVertex2f(x0+width,y0+height*0.1);
-				glVertex2f(x0+width*0.9,y0);
-				glVertex2f(x0,y0);
-				x0 += width+0.002*size;
-				break;
-			case '6':
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0+width*0.2,y0+height);
-				glVertex2f(x0,y0+height*0.8);
-				glVertex2f(x0,y0+height*0.5);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0+width,y0+height*0.4);
-				glVertex2f(x0+width,y0+height*0.1);
-				glVertex2f(x0+width*0.9,y0);
-				glVertex2f(x0+width*0.2,y0);
-				glVertex2f(x0,y0+height*0.2);
-				glVertex2f(x0,y0+height*0.5);
-				x0 += width+0.002*size;
-				break;
-			case '7':
-				glVertex2f(x0,y0+height);
-				glVertex2f(x0+width,y0+height);
-				glVertex2f(x0,y0);
-				x0 += width+0.002*size;
-				break;
-			case '8':
-				glVertex2f(x0+width*0.1,y0+height);
-				glVertex2f(x0+width*0.9,y0+height);
-				glVertex2f(x0+width,y0+height*0.9);
-				glVertex2f(x0+width,y0+height*0.6);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0+width,y0+height*0.4);
-				glVertex2f(x0+width,y0+height*0.1);
-				glVertex2f(x0+width*0.9,y0);
-				glVertex2f(x0+width*0.1,y0);
-				glVertex2f(x0,y0+height*0.1);
-				glVertex2f(x0,y0+height*0.4);
-				glVertex2f(x0+width*0.1,y0+height*0.5);
-				glVertex2f(x0+width*0.9,y0+height*0.5);
-				glVertex2f(x0+width*0.1,y0+height*0.5);
-				glVertex2f(x0,y0+height*0.6);
-				glVertex2f(x0,y0+height*0.9);
-				glVertex2f(x0+width*0.1,y0+height);
-				x0 += width+0.002*size;
-				break;
-			case '9':
-				glVertex2f(x0+width,y0+height*0.5);
-				glVertex2f(x0+width*0.1,y0+height*0.5);
-				glVertex2f(x0,y0+height*0.6);
-				glVertex2f(x0,y0+height*0.9);
-				glVertex2f(x0+width*0.1,y0+height);
-				glVertex2f(x0+width*0.9,y0+height);
-				glVertex2f(x0+width,y0+height*0.9);
-				glVertex2f(x0+width,y0);
-				x0 += width+0.002*size;
-				break;
+				break;			
 		}
-		glEnd();
+		glE();
 	}
 }
