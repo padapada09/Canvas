@@ -45,6 +45,7 @@ struct Canvas
 	int pixel_format_number;
 	int width;
 	int height;
+	float time;
 	HWND window_handle;
 	HDC device_context;
 }canvas;
@@ -73,7 +74,7 @@ void findColor(int hex,int color[2], HANDLE hStdout);
 			para configurar la pantalla (y posiblemente despues la librería permita hacer
 			más configuraciones).
 
-			*/int loop(float time);/*
+			*/int loop(void);/*
 			El hilo asincrónico llama a loop por cada frame que pone en la pantalla.
 			Le manda como parametro un double time, que le avisa al programa, 
 	*///	cuanto tiempo paso desde el útlimo frame mostrado al cliente.
@@ -248,12 +249,14 @@ DWORD WINAPI background_render(LPVOID null)
 	glC(GL_COLOR_BUFFER_BIT);	
 	auto start = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de inicio de dibujado
 	SwapB(canvas.device_context); //Esta función basicamente me imprime en pantalla lo dibujado
+	float time = 0;
 	while(1)
 	{
 		auto finish = std::chrono::high_resolution_clock::now(); //Tomo el tiempo de finalización de dibujado
 		std::chrono::duration<double> elapsed = finish - start;
 		start = finish; //Vuelvo a tomar el tiempo de inicio
-		float time = elapsed.count();
+		time += (elapsed.count() - time)/100;
+		canvas.time = time;
 		char* fps_s = new char[255];
 		int fps_i = (int) (1.0/time);
 		sprintf(fps_s,"%d", fps_i);
@@ -263,7 +266,7 @@ DWORD WINAPI background_render(LPVOID null)
 		if (SetWindowTextA(canvas.window_handle,title));
 		else break;
 		updateViewPort();
-		if (!loop(time)) break; //Ejecuto el programa
+		if (loop()) break; //Ejecuto el programa
 		SwapB(canvas.device_context); //Imprimo lo ejecutado en el programa
 		glC(GL_COLOR_BUFFER_BIT); //Limpio la pantalla
 	};

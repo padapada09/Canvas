@@ -18,16 +18,16 @@ int setUp()
 {
     canvas.width = 500;
     canvas.height = 500;
-    return 1;
+    return 0;
 }
 ```
-Ya con la función setUp definida, pasamos a definir el metodo en el que le diremos a la librería que deseamos dibujar. Este toma como parametro un double time en el que tenemos el tiempo en segundos desde el último frame. Si bien no es necesario usarlo, nos sirve para sujetar nuestras animaciones a un tiempo real, y no a la velocidad del procesador de nuestra computadora.
+Ya con la función setUp definida, pasamos a definir el metodo en el que le diremos a la librería que deseamos dibujar.
 ```
-int loop(double time)
+int loop()
 {
-    fillRect(0.15*WIDTH,0.15*HEIGHT,0.7*WIDTH,0.7*HEIGHT,0xffffff); //Imprimimos un cuadrado blanco con sus coordenadas x e y, y su  ancho y alto.
-    write("HOLA MUNDO",0.15*WIDTH+10,0.15*HEIGHT+10,10,0xff0000); //Imprimimos dentro del cuadrado 'HOLA MUNDO' en Rojo.
-    return 1;
+    fillRect(0.15*500,0.15*500,0.7*500,0.7*500,0xffffff); //Imprimimos un cuadrado blanco con sus coordenadas x e y, y su  ancho y alto.
+    write("HOLA MUNDO",0.15*500+10,0.15*500+10,10,0,0xff0000); //Imprimimos dentro del cuadrado 'HOLA MUNDO' en Rojo.
+    return 0;
 }
 ```
 <br>

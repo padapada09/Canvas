@@ -20,6 +20,7 @@ struct Field
     {
         fillRect(this->x,this->y,this->width,this->height,this->color);
     }
+
 }field;
 
 struct Player
@@ -152,26 +153,26 @@ int setUp()
     return 1;
 }
 
-int loop(float time)
+int loop()
 {
     fillRect(0,0,WIDTH,HEIGHT,0x003399);
     field.draw();
     int lx = -65;
-    int ly = 290;
+    int ly = 330;
     fillSemiCircle(100+lx,100+ly,30,1,180,0x6699ff);
     fillSemiCircle(100+lx,100+ly,15,0,180,0x003399);
     fillSemiCircle(100+lx,160+ly,30,0,-180,0x6699ff);
     fillSemiCircle(100+lx,160+ly,15,0,-180,0x003399);
     fillRect(93+lx,100+ly,14,60,0x6699ff);
     fillRect(70+lx,123+ly,60,14,0x6699ff);
-    // write("UTN",100+lx,65+ly,10,1);
-    first_player.moveY(1,time);
+    write("UTN",70+lx,65+ly,10,1);
+    first_player.moveY(1,canvas.time);
     first_player.draw();
-    second_player.moveY(1,time);
+    second_player.moveY(1,canvas.time);
     second_player.draw();
     ball.draw();
     marcador.show();
-    int movement = ball.move(time);
+    int movement = ball.move(canvas.time);
     switch (movement)
     {
         case 1:
@@ -191,5 +192,5 @@ int loop(float time)
             ball.y = HEIGHT/2;
             break;
     }
-    return 1;
+    return 0;
 }
