@@ -22,6 +22,7 @@
 void keyIgnore(int){}
 void clickIgnore(int,int){}
 void reziseIgnore(){}
+void mouseMoveIgnore(int,int){}
 
 /*ÁREA: DECLARACIÓN DE PROTOTIPOS Y ESTRUCTURAS*/
 
@@ -34,10 +35,14 @@ struct Canvas
 	void (*onKeyDown)(int) = keyIgnore; //Punteros de funciones que el usuario puede asignar a sus propios handlers
 	void (*onKeyUp)(int) = keyIgnore;
 	void (*onResizing)() = reziseIgnore;
+	void (*onMouseMove)(int,int) = mouseMoveIgnore;
 	void (*onLeftClickDown)(int,int) = clickIgnore;
 	void (*onRightClickDown)(int,int) = clickIgnore;
 	void (*onLeftClickUp)(int,int) = clickIgnore;
 	void (*onRightClickUp)(int,int) = clickIgnore;
+	HCURSOR selection_cursor;
+	RECT client_screen;
+	RECT window_screen;
 	HGLRC opengl_context;
 	MSG Msg;
 	WNDCLASSEX window_class;
@@ -46,6 +51,7 @@ struct Canvas
 	int width;
 	int height;
 	float time;
+	bool on_shift = false;
 	HWND window_handle;
 	HDC device_context;
 }canvas;
@@ -144,7 +150,8 @@ void startWindow()
 	canvas.window_class.cbSize = sizeof(WNDCLASSEX);
 	canvas.window_class.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
 	canvas.window_class.lpfnWndProc = windowProcess;
-	canvas.window_class.hCursor = LoadCursor(NULL, IDC_ARROW);
+	canvas.window_class.hCursor = LoadCursorA(NULL,(LPCSTR) IDC_ARROW);
+	canvas.selection_cursor = LoadCursorA(NULL,(LPCSTR) IDC_HAND);
 	canvas.window_class.hInstance = GetModuleHandle(nullptr);
 	canvas.window_class.lpszClassName = TEXT("CanvasGL");
 	RegisterClassEx(&canvas.window_class);
@@ -170,11 +177,11 @@ void setContext()
 
 void updateViewPort()
 {	
-	RECT client_screen;
-	GetClientRect(canvas.window_handle,&client_screen);
-	canvas.width = client_screen.right - client_screen.left;
-	canvas.height = client_screen.bottom - client_screen.top;
-	glViewp(0,0,client_screen.right,client_screen.bottom);	
+	GetWindowRect(canvas.window_handle, &canvas.window_screen);
+	GetClientRect(canvas.window_handle,&canvas.client_screen);
+	canvas.width = canvas.client_screen.right - canvas.client_screen.left;
+	canvas.height = canvas.client_screen.bottom - canvas.client_screen.top;
+	glViewp(0,0,canvas.client_screen.right,canvas.client_screen.bottom);
 }
 
 LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -208,19 +215,29 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 		break;
 	case WM_LBUTTONDOWN:
 		GetCursorPos(&point);
-		canvas.onLeftClickDown(point.x,point.y);
+		ScreenToClient(canvas.window_handle, &point);
+		canvas.onLeftClickDown(point.x,(canvas.client_screen.bottom - canvas.client_screen.top) - point.y);
 		break;
 	case WM_RBUTTONDOWN:
 		GetCursorPos(&point);
-		canvas.onRightClickDown(point.x,point.y);
+		ScreenToClient(canvas.window_handle, &point);
+		canvas.onRightClickDown(point.x,(canvas.client_screen.bottom - canvas.client_screen.top) - point.y);
 		break;
 	case WM_LBUTTONUP:
 		GetCursorPos(&point);
-		canvas.onLeftClickUp(point.x,point.y);
+		ScreenToClient(canvas.window_handle, &point);
+		canvas.onLeftClickUp(point.x,(canvas.client_screen.bottom - canvas.client_screen.top) - point.y);
 		break;
-	case WM_RBUTTONUP:
+	case WM_RBUTTONUP:		
 		GetCursorPos(&point);
-		canvas.onRightClickUp(point.x,point.y);
+		ScreenToClient(canvas.window_handle, &point);
+		canvas.onRightClickUp(point.x,(canvas.client_screen.bottom - canvas.client_screen.top) - point.y);
+		break;
+	case WM_SETCURSOR:
+		SetCursor(canvas.window_class.hCursor);
+		GetCursorPos(&point);
+		ScreenToClient(canvas.window_handle, &point);
+		canvas.onMouseMove(point.x,(canvas.client_screen.bottom - canvas.client_screen.top) - point.y);
 		break;
 	case WM_EXITSIZEMOVE :
 		updateViewPort();
@@ -561,7 +578,7 @@ void write(char* text, float x0, float y0, float size, bool centered = false , i
 				glV2f(x0+width/4,y0+height);
 				glV2f(x0+width/4,y0);
 				glV2f(x0+width/2,y0);
-				x0 += width/2+0.002*size;
+				x0 += width+0.002*size;
 				break;
 			case 'j':
 			case 'J':
@@ -571,7 +588,7 @@ void write(char* text, float x0, float y0, float size, bool centered = false , i
 				glV2f(x0+width/3,y0);
 				glV2f(x0,y0);
 				glV2f(x0,y0+height*0.3);
-				x0 += width/2+0.002*size;
+				x0 += width+0.002*size;
 				break;
 			case 'k':
 			case 'K':
