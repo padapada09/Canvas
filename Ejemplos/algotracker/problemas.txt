@@ -1,0 +1,47 @@
+1001 Extremadamente Basico
+1002 area del Circulo
+1005 Promedio 1
+1006 Promedio 2
+1007 Diferencia
+1009 Salario con Bonus
+1011 Esfera
+1013 El Mayor
+1015 Distancia entre 2 puntos
+1018 Billetes
+1019 Conversión de Tiempo
+1020 Edad en dias
+1021 Billetes y Monedas
+1037 Intervalo
+1036 Formula de Baskhara
+1038 Snack
+1045 Tipos de Triangulos
+1049 Animal
+1051 Impuestos
+1066 Par, Impar, Positivo y Negativo
+1067 Numeros Impares
+1070 Seis Numeros Impares
+1071 Suma de Numeros Consecutivos Impares
+1072 Intervalo 2
+1073 Cuadrado de un par
+1074 Par o impar
+1080 El mas alto y su posicion
+1095 Secuencia IJ 1
+1096 Secuencia IJ2
+1098 Secuencia IJ4
+1172 Array Replacement I
+1173 Array Fill I
+1174 Array Selection I
+1175 Array Change I
+1176 Fibonacci Array
+1178 Array Fill III
+1179 Array Fill IV
+1180 Lowest Number and Position
+1129 Optical Reader
+1181 Line in Array
+1182 Column in Array
+1183 Above the Main Diagonal
+1184 Below the Main Diagonal
+1795 Triangulo Trinomial
+2293 Campo de Minhocas
+1383 Sudoku
+

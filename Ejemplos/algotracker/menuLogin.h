@@ -1,13 +1,12 @@
 Button boton_ingresar((char*)"Ingresar",10,10,40);
 void (*showMenu)();
-int wrong_submits = 0;
 
-void onMouseMove1(int x, int y)
+void onMouseMoveLogin(int x, int y)
 {
     boton_ingresar.onMouseMove(x,y);    
 }
 
-void onMouseClick1(int x, int y)
+void onMouseClickLogin(int x, int y)
 {
     boton_ingresar.onMouseClick(x,y);    
 }
@@ -16,82 +15,78 @@ void ingresar()
 {   
     bool legajo = false;
     bool password = false;
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 2; i++)
     {        
-        legajo = !strcmp(string_buffer[0],integrantes[i].legajo);
-        password = !strcmp(string_buffer[1],integrantes[i].password);
-        if (legajo || password) break;
+        legajo = !strcmp(ui.string_buffer[0],db.personas[i].legajo);
+        password = !strcmp(ui.string_buffer[1],db.personas[i].password);
+        if (legajo) break;
     }
-    if (legajo)
+    //If no password given, don't check it
+    if (!strcmp(ui.string_buffer[1],"")) 
     {
-        if (password)
+        if (legajo)
         {
+            ui.active_buffer = 1;
+        }else{
+            ui.clearBuffer(0);
+        }
+    }else{
+        if (legajo && password)
+        {
+            ui.clearBuffer(-1);
+            ui.active_buffer = 0;
             showMenu = menuMain;
-            wrong_submits = 0;
-            sprintf(credenciales,string_buffer[0]);        
-        }        
-    }
-    else
-    {
-        showMenu = menuLogin;
-        active_buffer = 0;
-        wrong_submits++;
-    }
-    memset(&string_buffer[0][0], '\0', sizeof(string_buffer[0]));
-    string_buffer_size[0] = 0;
-    memset(&string_buffer[1][0], '\0', sizeof(string_buffer[1]));
-    string_buffer_size[1] = 0;
-}
-
-void menuLogin2()
-{
-    fillRect(0,0,canvas.height,canvas.width,0x333333);
-    write((char*)"Por favor, ingrese sus credenciales",10,500-30,7);
-    write((char*)"Legajo: ",10,500-100,7);
-    write(string_buffer[0],190,500-100,8);
-    write((char*)"Contrasena: ",10,500-300,7);
-    write(string_buffer[1],190,500-300,8);
-    if (wrong_submits > 0)
-    {
-        if (wrong_submits > 2) exit(EXIT_SUCCESS);
-        char warning[255];
-        sprintf(warning,"Te quedan %d intentos",3-wrong_submits);
-        write(warning,10,100,5,0xff0000);
-    }
-    printLogo(400,10,90,0xffffff,0x333333);
-    canvas.onMouseMove = onMouseMove1;
-    canvas.onLeftClickDown = onMouseClick1;
-    boton_ingresar.onClick = ingresar;
-    boton_ingresar.draw();
-    if (string_buffer[1][string_buffer_size[1]] == 13)
-    {
-        string_buffer[1][string_buffer_size[1]] = '\0';
-        boton_ingresar.onClick();
+            sesion.mistakes = 0;
+        }else{
+            ui.clearBuffer(-1);
+            ui.active_buffer = 0;
+            sesion.mistakes++;
+        }
     }
 }
 
 void menuLogin()
 {
-    fillRect(0,0,canvas.height,canvas.width,0x333333);
-    write((char*)"Por favor, ingrese sus credenciales",10,500-30,7);
-    write((char*)"Legajo: ",10,500-100,7);
-    write(string_buffer[0],190,500-100,8);    
-    if (wrong_submits > 0)
+    //Background
+    fillRect(0,0,canvas.width,canvas.height,0x333333);
+
+    //Welcome msg
+    char welcome_text[255];
+    sprintf(welcome_text,"Bienvenidos %s",db.nombre_equipo);
+    write(welcome_text,10,canvas.height-25,7);
+    
+    //Instructions
+    write((char*)"Por favor, ingrese sus credenciales",10,canvas.height-100,7);
+    
+    //Input
+    write((char*)"Legajo: ",10,canvas.height-250,7);
+    write(ui.string_buffer[0],190,canvas.height-250,8);
+    write((char*)"Contrasena: ",10,canvas.height-300,7);
+    writeAs(ui.string_buffer[1],190,canvas.height-300,8,'*');
+
+    if (sesion.mistakes > 0)
     {
-        if (wrong_submits > 2) exit(EXIT_SUCCESS);
+        if (sesion.mistakes > 2) exit(EXIT_SUCCESS);
         char warning[255];
-        sprintf(warning,"Te quedan %d intentos",3-wrong_submits);
+        sprintf(warning,"Te quedan %d intentos",3-sesion.mistakes);
         write(warning,10,100,5,0xff0000);
     }
+
+    //Logo
     printLogo(400,10,90,0xffffff,0x333333);
-    canvas.onMouseMove = onMouseMove1;
-    canvas.onLeftClickDown = onMouseClick1;
+
+    //Event handlers
+    canvas.onMouseMove = onMouseMoveLogin;
+    canvas.onLeftClickDown = onMouseClickLogin;
     boton_ingresar.onClick = ingresar;
+    
+    //Submit button
     boton_ingresar.draw();
-    if (string_buffer[0][string_buffer_size[0]] == 13)
+    
+    //Enter handler
+    if (ui.string_buffer[ui.active_buffer][ui.string_buffer_size[ui.active_buffer]] == 13)
     {
-        string_buffer[0][string_buffer_size[0]] = '\0';
-        active_buffer = 1;
-        showMenu = menuLogin2;
+        ui.string_buffer[ui.active_buffer][ui.string_buffer_size[ui.active_buffer]] = '\0';
+        ingresar();
     }
 }

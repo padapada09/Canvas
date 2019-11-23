@@ -1,15 +1,6 @@
 #include "../../CanvasUX.h"
 #include <fstream>
-
-struct Persona
-{
-    char legajo[255];
-    char password[255];
-}integrantes[3];
-
-char nombre_equipo[255];
-char credenciales[255];
-std::ifstream usuarios("usuarios.txt");
+#include <iostream>
 
 void printLogo(float x, float y, float size, int color_main, int color_back)
 {
@@ -26,24 +17,21 @@ void menuMain();
 void menuActualizarFicha();
 
 #include "menuLogin.h"
-#include "menuPrincipal.h"
+#include "menuMain.h"
 #include "menuActualizarFicha.h"
 
 int setUp()
 {
     canvas.width = 500;
     canvas.height = 500;
-    memset(&string_buffer[0][0], '\0', sizeof(string_buffer[0]));
-    string_buffer_size[0] = 0;
-    active_buffer = 0;
+    ui.clearBuffer(-1);
+    ui.active_buffer = 0;
     canvas.onKeyDown = listen;
-    canvas.onKeyUp = listen_up;
+    canvas.onKeyUp = listenUp;
     showMenu = menuLogin;
-    usuarios >> nombre_equipo;
-	for(int i=0;i<3;i++)
-	{
-		usuarios>>integrantes[i].legajo>>integrantes[i].password;
-	}    
+    db.load((char*)"db.pyj");
+    db.save((char*)"db.pyj");
+    db.loadServidor((char*)"problemas.txt");
     return 0;
 }
 

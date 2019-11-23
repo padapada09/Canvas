@@ -422,10 +422,14 @@ void drawRect(double x, double y, double width, double height, int color = 0xfff
 	float blue = (color%256)/255.0;
 	glB(GL_LINE_LOOP);
 	glC3f(red,green,blue);
-	glV2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glV2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glV2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
-	glV2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
+	double x0 = (((x/canvas.width)*2)-1);
+	double y0 = (((y/canvas.height)*2)-1);
+	double xf = ((((x+width)/canvas.width)*2)-1);
+	double yf = ((((y+height)/canvas.height)*2)-1);
+	glV2f(x0,y0);
+	glV2f(x0,yf);
+	glV2f(xf,yf);
+	glV2f(xf,y0);
 	glE();
 }
 
@@ -436,10 +440,14 @@ void fillRect(double x, double y, double width, double height, int color = 0xfff
 	float green = ((color/256)%256)/255.0;
 	float blue = (color%256)/255.0;
 	glC3f(red,green,blue);
-	glV2f((((x/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glV2f(((((x+width)/canvas.width)*2)-1),(((y/canvas.height)*2)-1));
-	glV2f(((((x+width)/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
-	glV2f((((x/canvas.width)*2)-1),((((y+height)/canvas.height)*2)-1));
+	double x0 = (((x/canvas.width)*2)-1);
+	double y0 = (((y/canvas.height)*2)-1);
+	double xf = ((((x+width)/canvas.width)*2)-1);
+	double yf = ((((y+height)/canvas.height)*2)-1);
+	glV2f(x0,y0);
+	glV2f(x0,yf);
+	glV2f(xf,yf);
+	glV2f(xf,y0);
 	glE();
 }
 
