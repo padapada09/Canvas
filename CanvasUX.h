@@ -5,7 +5,7 @@ void onClickIgnore();
 void listen(int vk);
 void listenUp(int vk);
 void writeAs(char* text,float x,float y,int size,char c);
-
+/*Something, something more...*/
 struct Problema
 {
     char id[10];
