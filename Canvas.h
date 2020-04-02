@@ -249,7 +249,7 @@ LRESULT CALLBACK windowProcess(HWND window_handle, UINT msg, WPARAM wParam, LPAR
 	return 0;
 }
 /*FÍN ÁREA: CONFIGURACIÓN DE VENTANA Y SU CONTEXTO*/
-
+/*Something, something, something....*/
 /*		Esta función se ejecuta en un hilo asincrónico.
 		Se encarga de calcular los frames por segundo, de imprimir en pantalla, 
 *///	y de ejecucar la función del programa.
